@@ -1,0 +1,31 @@
+export enum ERROR_MESSAGES {
+  // 1001 - 1010: Auth
+  EmailAlreadyExists = 1001,
+  EmailOrPasswordIncorrect = 1002,
+
+  // 1011 - 1020: User
+  UserNotFound = 1011,
+
+  // 1021 - 1030: Role
+  RoleNotFound = 1021,
+
+  // 1031 - 1040: Permission
+  YouDoNotHavePermission = 1031,
+
+  // 1041 - 1050: File
+  FileFormatNotSupport = 1041,
+
+  // 1051 - 1060: Project
+  ProjectNotFound = 1051,
+
+  // 1061 - 1070: Source
+  SourceNotFound = 1061,
+
+  // 1071 - 1080: Project Member
+  ProjectMemberNotFound = 1071,
+  ProjectMemberAlreadyExists = 1072,
+
+  // 1081 - 1090: Source Setting
+  SourceSettingNotFound = 1081,
+  SourceSettingAlreadyExists = 1082,
+}

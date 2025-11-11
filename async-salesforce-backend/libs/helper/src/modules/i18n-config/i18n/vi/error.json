@@ -1,0 +1,37 @@
+{
+  "500": "Lỗi máy chủ nội bộ",
+
+  "1001": "Email đã tồn tại",
+  "1002": "Email hoặc mật khẩu không chính xác",
+
+  "1011": "Người dùng không tồn tại",
+
+  "1021": "Vai trò không tồn tại",
+
+  "1031": "Bạn không có quyền truy cập",
+
+  "1041": "Định dạng file không hợp lệ. Vui lòng chỉ upload file .png, .jpg, .jpeg, .mp4. Vui lòng thử lại!",
+
+  "1051": "Danh mục không tồn tại",
+  "1052": "Danh mục đã tồn tại",
+
+  "1061": "Sản phẩm không tồn tại",
+  "1062": "Sản phẩm đã tồn tại",
+  "1063": "Mã SKU sản phẩm đã tồn tại",
+  "1064": "Slug sản phẩm đã tồn tại",
+
+  "1071": "Đơn hàng không tồn tại",
+  "1072": "Mục đơn hàng không tồn tại",
+  "1073": "Trạng thái đơn hàng không hợp lệ",
+  "1074": "Không thể cập nhật đơn hàng",
+
+  "1081": "Mục giỏ hàng không tồn tại",
+  "1082": "Mục giỏ hàng đã tồn tại",
+  "1083": "Số lượng giỏ hàng không hợp lệ",
+  "1084": "Không thể cập nhật giỏ hàng",
+
+  "1091": "Nhãn biến thể không tồn tại",
+  "1101": "Tùy chọn biến thể không tồn tại",
+  "1111": "Biến thể sản phẩm không tồn tại",
+  "1112": "Mã SKU biến thể sản phẩm đã tồn tại"
+}

@@ -1,0 +1,22 @@
+import { TypeConfigService } from '@app/core/modules/type-config';
+import {
+  registerAppConfig,
+  registerDatabaseConfig,
+  registerJwtConfig,
+} from '@app/core/modules/type-config/configs';
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+@Global()
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [registerAppConfig, registerJwtConfig, registerDatabaseConfig],
+      envFilePath: ['.env'],
+    }),
+  ],
+  providers: [TypeConfigService],
+  exports: [TypeConfigService],
+})
+export class TypeConfigModule {}
