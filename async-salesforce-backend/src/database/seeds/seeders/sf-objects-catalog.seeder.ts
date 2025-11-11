@@ -18,15 +18,17 @@ export async function seedSfObjectsCatalog(
     (s) => s.provider === SOURCE_PROVIDER.SALESFORCE,
   )) {
     for (const objectName of commonObjects) {
-      catalog.push({
-        id: randomUUID(),
-        sourceId: source.id,
-        apiName: objectName,
-        label: `${objectName} Object`,
-        isSelected: objectName === 'Account' || objectName === 'Contact',
-        selectedBy: source.id,
-        selectedAt: new Date(),
-      });
+      catalog.push(
+        repository.create({
+          id: randomUUID(),
+          sourceId: source.id,
+          apiName: objectName,
+          label: `${objectName} Object`,
+          isSelected: objectName === 'Account' || objectName === 'Contact',
+          selectedBy: source.id,
+          selectedAt: new Date(),
+        }),
+      );
     }
   }
 

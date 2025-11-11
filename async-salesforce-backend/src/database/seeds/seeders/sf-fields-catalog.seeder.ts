@@ -91,20 +91,22 @@ export async function seedSfFieldsCatalog(
   for (const obj of objects) {
     const objectFields = commonFields[obj.apiName] || [];
     for (const field of objectFields) {
-      fields.push({
-        id: randomUUID(),
-        objectId: obj.id,
-        apiName: field.apiName,
-        label: field.label,
-        sfType: field.sfType,
-        isRequired: field.isRequired || false,
-        length: field.sfType === 'String' ? 255 : undefined,
-        isSelected:
-          obj.isSelected &&
-          ['Id', 'Name', 'Email', 'CreatedDate'].includes(field.apiName),
-        selectedBy: obj.isSelected ? obj.selectedBy : undefined,
-        selectedAt: obj.isSelected ? obj.selectedAt : undefined,
-      });
+      fields.push(
+        repository.create({
+          id: randomUUID(),
+          objectId: obj.id,
+          apiName: field.apiName,
+          label: field.label,
+          sfType: field.sfType,
+          isRequired: field.isRequired || false,
+          length: field.sfType === 'String' ? 255 : undefined,
+          isSelected:
+            obj.isSelected &&
+            ['Id', 'Name', 'Email', 'CreatedDate'].includes(field.apiName),
+          selectedBy: obj.isSelected ? obj.selectedBy : undefined,
+          selectedAt: obj.isSelected ? obj.selectedAt : undefined,
+        }),
+      );
     }
   }
 

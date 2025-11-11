@@ -40,8 +40,13 @@ export async function clearDatabase(dataSource: DataSource): Promise<void> {
   ];
 
   for (const entity of entities) {
-    const repository = dataSource.getRepository(entity);
-    await repository.delete({});
+    try {
+      const repository = dataSource.getRepository(entity);
+      await repository.clear();
+    } catch (error) {
+      // Ignore errors if table doesn't exist
+      console.log(`⚠️  Skipping ${entity.name} (table may not exist)`);
+    }
   }
   console.log('✅ Database cleared');
 }

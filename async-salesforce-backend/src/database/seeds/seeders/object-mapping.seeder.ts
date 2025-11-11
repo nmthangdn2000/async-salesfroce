@@ -31,14 +31,16 @@ export async function seedObjectMappings(
   ];
 
   for (const mapping of objectMappings) {
-    mappings.push({
-      id: randomUUID(),
-      sourceId: source.id,
-      objectApiName: mapping.objectApiName,
-      targetId: target.id,
-      targetTable: mapping.targetTable,
-      pkStrategy: mapping.pkStrategy,
-    });
+    mappings.push(
+      repository.create({
+        id: randomUUID(),
+        sourceId: source.id,
+        objectApiName: mapping.objectApiName,
+        targetId: target.id,
+        targetTable: mapping.targetTable,
+        pkStrategy: mapping.pkStrategy,
+      }),
+    );
   }
 
   const savedMappings = await repository.save(mappings);

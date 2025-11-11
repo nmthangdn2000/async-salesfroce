@@ -15,7 +15,7 @@ export async function seedFieldMappings(
   for (const objMapping of objectMappings) {
     const fieldMap: Record<
       string,
-      { targetColumn: string; logicalType: string }
+      Record<string, { targetColumn: string; logicalType: string }>
     > = {
       Account: {
         Id: { targetColumn: 'id', logicalType: 'string' },
@@ -43,17 +43,18 @@ export async function seedFieldMappings(
       },
     };
 
-    const fields = fieldMap[objMapping.objectApiName] || {};
-    for (const [sfField, mapping] of Object.entries(fields)) {
-      const fieldMapping = mapping as { targetColumn: string; logicalType: string };
-      if (fieldMapping) {
-        fieldMappings.push({
-          id: randomUUID(),
-          objectMappingId: objMapping.id,
-          sfFieldApiName: sfField,
-          targetColumn: fieldMapping.targetColumn,
-          logicalType: fieldMapping.logicalType,
-        });
+    const fields = fieldMap[objMapping.objectApiName];
+    if (fields) {
+      for (const [sfField, mapping] of Object.entries(fields)) {
+        fieldMappings.push(
+          repository.create({
+            id: randomUUID(),
+            objectMappingId: objMapping.id,
+            sfFieldApiName: sfField,
+            targetColumn: mapping.targetColumn,
+            logicalType: mapping.logicalType,
+          }),
+        );
       }
     }
   }

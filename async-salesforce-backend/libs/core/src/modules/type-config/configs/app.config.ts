@@ -70,6 +70,12 @@ class EnvironmentVariables {
   @IsOptional()
   CORS_ORIGINS!: string[];
 
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return Boolean(value);
+  })
   @IsBoolean()
   TRANS_FORM_KEYS!: boolean;
 }
@@ -89,7 +95,7 @@ export const registerAppConfig = registerAs<TAppConfig>(
       backendUrl: env.BACKEND_URL,
       apiPrefix: env.API_PREFIX,
       corsOrigins: env.CORS_ORIGINS || ['*'],
-      transFormKeys: env.TRANS_FORM_KEYS,
+      transFormKeys: false,
     };
   },
 );

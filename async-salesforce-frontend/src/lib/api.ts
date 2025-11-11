@@ -41,6 +41,16 @@ async function handleResponse<T>(response: Response): Promise<T> {
     );
   }
 
+  // Backend wraps response in { statusCode, data, message }
+  // Unwrap the data field if it exists
+  if (
+    data &&
+    typeof data === "object" &&
+    "data" in data &&
+    "statusCode" in data
+  ) {
+    return data.data;
+  }
   return data;
 }
 
