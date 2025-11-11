@@ -35,4 +35,3 @@ export class SourceSettingEntity extends BaseEntity implements TSourceSetting {
   @JoinColumn({ name: 'source_id' })
   source!: SourceEntity;
 }
-

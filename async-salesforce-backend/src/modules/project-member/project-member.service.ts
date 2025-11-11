@@ -56,7 +56,8 @@ export class ProjectMemberService {
   async findAll(
     filter: FilterProjectMemberRequestDto,
   ): Promise<GetPaginatedProjectMemberResponseDto> {
-    const query = this.projectMemberRepository.createQueryBuilder('projectMember');
+    const query =
+      this.projectMemberRepository.createQueryBuilder('projectMember');
 
     if (filter.projectId) {
       query.andWhere('projectMember.projectId = :projectId', {
@@ -97,4 +98,3 @@ export class ProjectMemberService {
     await this.projectMemberRepository.remove(projectMember);
   }
 }
-

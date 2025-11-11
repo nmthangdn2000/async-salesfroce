@@ -13,4 +13,3 @@ import { ProjectMemberService } from './project-member.service';
   exports: [ProjectMemberRepository, ProjectMemberService],
 })
 export class ProjectMemberModule {}
-

@@ -10,4 +10,3 @@ export class SourceSettingRepository extends BaseRepository<SourceSettingEntity>
     super(SourceSettingEntity, dataSource.createEntityManager());
   }
 }
-

@@ -1,9 +1,13 @@
 import { BaseFilterRequestDto } from '@app/common/base/filter-request.dto.base';
+import { TFilterProjectMemberRequestDto } from '@app/shared/dtos/project-member/project-member.dto';
+import { PROJECT_MEMBER_ROLE } from '@app/shared/models/project.model';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { PROJECT_MEMBER_ROLE } from '@app/shared/models/project.model';
 
-export class FilterProjectMemberRequestDto extends BaseFilterRequestDto {
+export class FilterProjectMemberRequestDto
+  extends BaseFilterRequestDto
+  implements TFilterProjectMemberRequestDto
+{
   @ApiProperty({
     description: 'Project ID',
     required: false,
@@ -29,4 +33,3 @@ export class FilterProjectMemberRequestDto extends BaseFilterRequestDto {
   @IsEnum(PROJECT_MEMBER_ROLE)
   role?: PROJECT_MEMBER_ROLE;
 }
-

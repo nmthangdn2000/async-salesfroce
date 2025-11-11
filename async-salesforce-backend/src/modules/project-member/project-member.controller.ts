@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateProjectMemberRequestDto } from 'src/modules/project-member/dto/requests/create-project-member.dto';
 import { FilterProjectMemberRequestDto } from 'src/modules/project-member/dto/requests/filter-project-member.dto';
@@ -11,9 +19,7 @@ import { ProjectMemberService } from './project-member.service';
 @ApiTags('Project Members')
 @Controller('project-members')
 export class ProjectMemberController {
-  constructor(
-    private readonly projectMemberService: ProjectMemberService,
-  ) {}
+  constructor(private readonly projectMemberService: ProjectMemberService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new project member' })
@@ -65,4 +71,3 @@ export class ProjectMemberController {
     return this.projectMemberService.remove(id);
   }
 }
-

@@ -1,14 +1,13 @@
+import { BaseModelResponseDto } from '@app/common/base/model-response.dto.base';
+import { TGetProjectResponseDto } from '@app/shared/dtos/project/project.dto';
 import { ApiResponseProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { GetOneProjectMemberResponseDto } from 'src/modules/project-member/dto/response/get-one-project-member.dto';
 
-export class GetOneProjectResponseDto {
-  @ApiResponseProperty({
-    type: String,
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @Expose()
-  id!: string;
-
+export class GetOneProjectResponseDto
+  extends BaseModelResponseDto
+  implements TGetProjectResponseDto
+{
   @ApiResponseProperty({
     type: String,
     example: 'My Project',
@@ -24,16 +23,21 @@ export class GetOneProjectResponseDto {
   slug!: string;
 
   @ApiResponseProperty({
-    type: Date,
-    example: '2021-01-01T00:00:00.000Z',
+    type: [GetOneProjectMemberResponseDto],
   })
+  @Type(() => GetOneProjectMemberResponseDto)
   @Expose()
-  createdAt!: Date;
+  projectMembers!: GetOneProjectMemberResponseDto[];
 
   @ApiResponseProperty({
-    type: Date,
-    example: '2021-01-01T00:00:00.000Z',
+    type: Number,
   })
   @Expose()
-  updatedAt!: Date;
+  sourceCount?: number;
+
+  @ApiResponseProperty({
+    type: Number,
+  })
+  @Expose()
+  targetCount?: number;
 }

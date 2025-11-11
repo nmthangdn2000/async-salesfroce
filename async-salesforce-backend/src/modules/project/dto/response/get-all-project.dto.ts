@@ -1,9 +1,13 @@
 import { BaseResponsePaginationDto } from '@app/common/base/response.dto.base';
+import { TGetPaginatedProjectResponseDto } from '@app/shared/dtos/project/project.dto';
 import { ApiResponseProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { GetOneProjectResponseDto } from 'src/modules/project/dto/response/get-one-project.dto';
 
-export class GetPaginatedProjectResponseDto extends BaseResponsePaginationDto<GetOneProjectResponseDto> {
+export class GetPaginatedProjectResponseDto
+  extends BaseResponsePaginationDto<GetOneProjectResponseDto>
+  implements TGetPaginatedProjectResponseDto
+{
   @ApiResponseProperty({
     type: [GetOneProjectResponseDto],
   })

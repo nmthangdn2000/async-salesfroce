@@ -20,9 +20,7 @@ import { SourceSettingService } from './source-setting.service';
 @ApiTags('Source Settings')
 @Controller('source-settings')
 export class SourceSettingController {
-  constructor(
-    private readonly sourceSettingService: SourceSettingService,
-  ) {}
+  constructor(private readonly sourceSettingService: SourceSettingService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new source setting' })
@@ -102,4 +100,3 @@ export class SourceSettingController {
     return this.sourceSettingService.remove(id);
   }
 }
-

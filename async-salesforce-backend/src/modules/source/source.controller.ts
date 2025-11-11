@@ -47,9 +47,7 @@ export class SourceController {
     description: 'The source has been successfully retrieved.',
     type: GetOneSourceResponseDto,
   })
-  async findById(
-    @Param('id') id: string,
-  ): Promise<GetOneSourceResponseDto> {
+  async findById(@Param('id') id: string): Promise<GetOneSourceResponseDto> {
     return this.sourceService.findById(id);
   }
 }

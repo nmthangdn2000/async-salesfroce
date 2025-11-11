@@ -1,12 +1,19 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { ICreateSourceRequestDto } from '@app/shared/dtos/source/source.dto';
 import {
   SOURCE_ENVIRONMENT,
   SOURCE_PROVIDER,
   SOURCE_STATUS,
 } from '@app/shared/models/source.model';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
-export class CreateSourceRequestDto {
+export class CreateSourceRequestDto implements ICreateSourceRequestDto {
   @ApiProperty({
     description: 'Project ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -40,7 +47,7 @@ export class CreateSourceRequestDto {
     default: SOURCE_ENVIRONMENT.PROD,
   })
   @IsEnum(SOURCE_ENVIRONMENT)
-  @IsNotEmpty()
+  @IsOptional()
   environment?: SOURCE_ENVIRONMENT;
 
   @ApiProperty({
@@ -51,7 +58,6 @@ export class CreateSourceRequestDto {
     default: SOURCE_STATUS.ACTIVE,
   })
   @IsEnum(SOURCE_STATUS)
-  @IsNotEmpty()
+  @IsOptional()
   status?: SOURCE_STATUS;
 }
-

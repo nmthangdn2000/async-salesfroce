@@ -39,4 +39,3 @@ export class ProjectMemberEntity extends BaseEntity implements TProjectMember {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 }
-

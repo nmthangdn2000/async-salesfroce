@@ -8,10 +8,7 @@ import { ProjectRepository } from './project.repository';
 import { ProjectService } from './project.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ProjectEntity]),
-    ProjectMemberModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ProjectEntity]), ProjectMemberModule],
   controllers: [ProjectController],
   providers: [ProjectService, ProjectRepository],
   exports: [ProjectRepository, ProjectService],

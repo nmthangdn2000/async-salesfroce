@@ -10,4 +10,3 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMemberEntity>
     super(ProjectMemberEntity, dataSource.createEntityManager());
   }
 }
-

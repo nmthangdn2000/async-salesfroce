@@ -8,10 +8,7 @@ import { SourceRepository } from './source.repository';
 import { SourceService } from './source.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([SourceEntity]),
-    SourceSettingModule,
-  ],
+  imports: [TypeOrmModule.forFeature([SourceEntity]), SourceSettingModule],
   controllers: [SourceController],
   providers: [SourceService, SourceRepository],
   exports: [SourceRepository, SourceService],
