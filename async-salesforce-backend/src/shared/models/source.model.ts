@@ -42,6 +42,9 @@ export type TSourceSetting = TBase & {
   instanceUrl: string;
   authType: AUTH_TYPE;
   scopes?: string[];
-  secretsRef: string;
+  secretsRef?: string;
+  clientId?: string;
+  clientSecret?: string;
+  refreshToken?: string;
   source: TSource;
 };

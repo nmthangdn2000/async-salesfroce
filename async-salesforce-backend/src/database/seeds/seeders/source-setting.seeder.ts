@@ -17,7 +17,9 @@ export async function seedSourceSettings(
     instanceUrl: `https://${source.name.toLowerCase().replace(/\s+/g, '-')}.salesforce.com`,
     authType: AUTH_TYPE.OAUTH2,
     scopes: ['api', 'refresh_token', 'offline_access'],
-    secretsRef: `secret-${source.id}`,
+    clientId: `3MVG9${source.id.substring(0, 15).replace(/-/g, '')}`,
+    clientSecret: `ABC123${source.id.substring(0, 10).replace(/-/g, '')}`,
+    refreshToken: undefined, // Optional - can be set manually later
   }));
 
   const savedSettings = await repository.save(sourceSettings);

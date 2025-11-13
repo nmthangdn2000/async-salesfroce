@@ -1,0 +1,499 @@
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import {
+  Button,
+  Card,
+  Space,
+  Tag,
+  Empty,
+  Spin,
+  Typography,
+  Modal,
+  Form,
+  Input,
+  Select,
+  message,
+  Descriptions,
+  Divider,
+} from 'antd'
+import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined } from '@ant-design/icons'
+import { sourceApi } from '@/services/source.service'
+import { projectApi } from '@/services/project.service'
+import { sourceSettingApi } from '@/services/source-setting.service'
+import {
+  SourceProvider,
+  SourceEnvironment,
+  SourceStatus,
+} from '@/types/source'
+import { AuthType } from '@/types/source-setting'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+const { Title, Text } = Typography
+
+export const Route = createFileRoute('/sources/$id')({
+  component: SourceDetailPage,
+})
+
+function SourceDetailPage() {
+  const { id } = Route.useParams()
+  const navigate = useNavigate()
+  const [form] = Form.useForm()
+  const [isSettingModalOpen, setIsSettingModalOpen] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
+  const queryClient = useQueryClient()
+
+  // Fetch source details
+  const { data: source, isLoading: sourceLoading } = useQuery({
+    queryKey: ['sources', id],
+    queryFn: () => sourceApi.getById(id),
+    enabled: !!id,
+  })
+
+  // Fetch project details
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects', 'all'],
+    queryFn: () =>
+      projectApi.getAll({
+        page: 1,
+        take: 1000,
+      }),
+  })
+
+  // Fetch source setting
+  const {
+    data: sourceSetting,
+    isLoading: settingLoading,
+  } = useQuery({
+    queryKey: ['source-settings', id],
+    queryFn: () => sourceSettingApi.getBySourceId(id),
+    enabled: !!id,
+    retry: false,
+  })
+
+  const project = projectsData?.items.find((p) => p.id === source?.projectId)
+
+  // Create/Update mutation
+  const saveSettingMutation = useMutation({
+    mutationFn: async (values: {
+      instanceUrl: string
+      authType: AuthType
+      scopes?: string[]
+      clientId?: string
+      clientSecret?: string
+      refreshToken?: string
+    }) => {
+      if (sourceSetting) {
+        return sourceSettingApi.update(sourceSetting.id, values)
+      } else {
+        return sourceSettingApi.create({
+          sourceId: id,
+          ...values,
+        })
+      }
+    },
+    onSuccess: () => {
+      message.success(
+        sourceSetting
+          ? 'Source setting updated successfully'
+          : 'Source setting created successfully',
+      )
+      setIsSettingModalOpen(false)
+      form.resetFields()
+      queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to save source setting')
+    },
+  })
+
+  // Generate callback URL from API base URL
+  const getCallbackUrl = () => {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+    // Remove /api suffix if present, then add oauth callback route
+    const baseUrl = apiBaseUrl.replace(/\/api$/, '')
+    return `${baseUrl}/api/auth/oauth/callback?sourceId=${id}`
+  }
+
+  const handleCopyCallbackUrl = async () => {
+    try {
+      const callbackUrl = getCallbackUrl()
+      await navigator.clipboard.writeText(callbackUrl)
+      setIsCopied(true)
+      message.success('Callback URL copied to clipboard!')
+      setTimeout(() => {
+        setIsCopied(false)
+      }, 2000)
+    } catch (error) {
+      message.error('Failed to copy URL')
+    }
+  }
+
+  const handleOpenSettingModal = () => {
+    if (sourceSetting) {
+      form.setFieldsValue({
+        instanceUrl: sourceSetting.instanceUrl,
+        authType: sourceSetting.authType,
+        scopes: sourceSetting.scopes?.join(', ') || '',
+        clientId: sourceSetting.clientId || '',
+        refreshToken: sourceSetting.refreshToken || '',
+        clientSecret: '', // Don't show secrets in form
+      })
+    } else {
+      form.setFieldsValue({
+        authType: AuthType.OAUTH2,
+      })
+    }
+    setIsSettingModalOpen(true)
+  }
+
+  const handleSaveSetting = (values: {
+    instanceUrl: string
+    authType: AuthType
+    scopes?: string
+    clientId?: string
+    clientSecret?: string
+    refreshToken?: string
+  }) => {
+    const scopesArray = values.scopes
+      ? values.scopes.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined
+
+    saveSettingMutation.mutate({
+      instanceUrl: values.instanceUrl,
+      authType: values.authType,
+      scopes: scopesArray,
+      clientId: values.clientId,
+      clientSecret: values.clientSecret,
+      refreshToken: values.refreshToken,
+    })
+  }
+
+  const getProviderColor = (provider: SourceProvider) => {
+    switch (provider) {
+      case SourceProvider.SALESFORCE:
+        return 'blue'
+      case SourceProvider.HUBSPOT:
+        return 'orange'
+      case SourceProvider.CUSTOM:
+        return 'green'
+      default:
+        return 'default'
+    }
+  }
+
+  const getStatusColor = (status: SourceStatus) => {
+    switch (status) {
+      case SourceStatus.ACTIVE:
+        return 'green'
+      case SourceStatus.DISABLED:
+        return 'red'
+      default:
+        return 'default'
+    }
+  }
+
+  if (sourceLoading) {
+    return (
+      <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Spin size="large" />
+      </div>
+    )
+  }
+
+  if (!source) {
+    return (
+      <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+        <Card>
+          <Empty
+            description="Source not found"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+      {/* Source Header */}
+      <Card style={{ marginBottom: 24 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate({ to: '/sources' })}
+              style={{ marginBottom: 16 }}
+            >
+              Back to Sources
+            </Button>
+            <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
+              {source.name}
+            </Title>
+            <Space wrap>
+              <Tag color={getProviderColor(source.provider)}>
+                {source.provider.toUpperCase()}
+              </Tag>
+              <Tag>{source.environment.toUpperCase()}</Tag>
+              <Tag color={getStatusColor(source.status)}>
+                {source.status.toUpperCase()}
+              </Tag>
+              {project && (
+                <Tag>
+                  Project: {project.name}
+                </Tag>
+              )}
+            </Space>
+            <div style={{ marginTop: 16 }}>
+              <Text type="secondary">
+                Created: {new Date(source.createdAt).toLocaleDateString()} | 
+                Updated: {new Date(source.updatedAt).toLocaleDateString()}
+              </Text>
+            </div>
+          </div>
+          <Button
+            type="primary"
+            icon={<SettingOutlined />}
+            onClick={handleOpenSettingModal}
+          >
+            {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Source Details */}
+      <Card style={{ marginBottom: 24 }}>
+        <Title level={4} style={{ marginBottom: 16 }}>
+          Source Information
+        </Title>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div>
+            <Text strong>ID: </Text>
+            <Text>{source.id}</Text>
+          </div>
+          <div>
+            <Text strong>Name: </Text>
+            <Text>{source.name}</Text>
+          </div>
+          <div>
+            <Text strong>Provider: </Text>
+            <Tag color={getProviderColor(source.provider)}>
+              {source.provider.toUpperCase()}
+            </Tag>
+          </div>
+          <div>
+            <Text strong>Environment: </Text>
+            <Tag>{source.environment.toUpperCase()}</Tag>
+          </div>
+          <div>
+            <Text strong>Status: </Text>
+            <Tag color={getStatusColor(source.status)}>
+              {source.status.toUpperCase()}
+            </Tag>
+          </div>
+          {project && (
+            <div>
+              <Text strong>Project: </Text>
+              <Text>{project.name}</Text>
+            </div>
+          )}
+        </Space>
+      </Card>
+
+      {/* Source Settings */}
+      <Card>
+        <Title level={4} style={{ marginBottom: 16 }}>
+          Source Settings
+        </Title>
+        {settingLoading ? (
+          <Spin />
+        ) : sourceSetting ? (
+          <Descriptions bordered column={1}>
+            <Descriptions.Item label="Instance URL">
+              {sourceSetting.instanceUrl}
+            </Descriptions.Item>
+            <Descriptions.Item label="Auth Type">
+              <Tag>{sourceSetting.authType.toUpperCase()}</Tag>
+            </Descriptions.Item>
+            {sourceSetting.clientId && (
+              <Descriptions.Item label="Client ID">
+                {sourceSetting.clientId}
+              </Descriptions.Item>
+            )}
+            <Descriptions.Item label="Callback URL">
+              <Space>
+                <Text code style={{ fontSize: 12 }}>
+                  {getCallbackUrl()}
+                </Text>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
+                  onClick={handleCopyCallbackUrl}
+                >
+                  {isCopied ? 'Copied!' : 'Copy'}
+                </Button>
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label="Scopes">
+              {sourceSetting.scopes && sourceSetting.scopes.length > 0
+                ? sourceSetting.scopes.join(', ')
+                : 'N/A'}
+            </Descriptions.Item>
+            {sourceSetting.refreshToken && (
+              <Descriptions.Item label="Refresh Token">
+                <Text code style={{ fontSize: 11, wordBreak: 'break-all' }}>
+                  {sourceSetting.refreshToken.substring(0, 50)}...
+                </Text>
+              </Descriptions.Item>
+            )}
+            <Descriptions.Item label="Created At">
+              {new Date(sourceSetting.createdAt).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Updated At">
+              {new Date(sourceSetting.updatedAt).toLocaleString()}
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          <Empty
+            description="No settings configured. Click 'Configure Settings' to set up."
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
+      </Card>
+
+      {/* Source Setting Modal */}
+      <Modal
+        title={sourceSetting ? 'Edit Source Settings' : 'Configure Source Settings'}
+        open={isSettingModalOpen}
+        onCancel={() => {
+          setIsSettingModalOpen(false)
+          form.resetFields()
+        }}
+        footer={
+          <Space>
+            <Button
+              onClick={() => {
+                setIsSettingModalOpen(false)
+                form.resetFields()
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => form.submit()}
+              loading={saveSettingMutation.isPending}
+            >
+              {sourceSetting ? 'Update' : 'Create'}
+            </Button>
+          </Space>
+        }
+        width={600}
+        style={{ top: 20 }}
+        bodyStyle={{
+          maxHeight: 'calc(100vh - 200px)',
+          overflowY: 'auto',
+          padding: '24px',
+          borderTop: '1px solid #f0f0f0',
+          borderBottom: '1px solid #f0f0f0',
+        }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSaveSetting}
+          autoComplete="off"
+        >
+          <Form.Item
+            label="Instance URL"
+            name="instanceUrl"
+            rules={[
+              { required: true, message: 'Please enter instance URL' },
+              { type: 'url', message: 'Please enter a valid URL' },
+            ]}
+          >
+            <Input placeholder="https://myinstance.salesforce.com" />
+          </Form.Item>
+
+          <Form.Item
+            label="Authentication Type"
+            name="authType"
+            rules={[{ required: true, message: 'Please select auth type' }]}
+          >
+            <Select>
+              {Object.values(AuthType).map((authType) => (
+                <Select.Option key={authType} value={authType}>
+                  {authType.toUpperCase()}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="OAuth 2.0 Client ID"
+            name="clientId"
+            tooltip="Consumer Key from Salesforce Connected App"
+          >
+            <Input placeholder="3MVG9..." />
+          </Form.Item>
+
+          <Form.Item
+            label="OAuth 2.0 Client Secret"
+            name="clientSecret"
+            tooltip="Consumer Secret from Salesforce Connected App"
+          >
+            <Input.Password placeholder="Enter client secret" />
+          </Form.Item>
+
+          <Form.Item
+            label="Callback URL"
+            tooltip="Copy this URL and add it to your Salesforce Connected App's Callback URLs"
+            extra={
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Add this URL to Salesforce: Setup → App Manager → Your App → OAuth Settings → Callback URLs
+              </Text>
+            }
+          >
+            <Space.Compact style={{ width: '100%' }}>
+              <Input
+                readOnly
+                value={getCallbackUrl()}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
+              />
+              <Button
+                icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
+                onClick={handleCopyCallbackUrl}
+              >
+                {isCopied ? 'Copied!' : 'Copy'}
+              </Button>
+            </Space.Compact>
+          </Form.Item>
+
+          <Form.Item
+            label="Refresh Token (Optional)"
+            name="refreshToken"
+            tooltip="Manually enter refresh token if OAuth flow setup fails"
+          >
+            <Input placeholder="Enter refresh token manually if needed" />
+          </Form.Item>
+
+          <Form.Item
+            label="Scopes (comma-separated)"
+            name="scopes"
+            tooltip="Enter OAuth scopes separated by commas, e.g., api, refresh_token"
+          >
+            <Input placeholder="api, refresh_token" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+

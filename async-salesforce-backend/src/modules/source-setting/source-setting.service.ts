@@ -34,7 +34,9 @@ export class SourceSettingService {
       instanceUrl: createSourceSettingDto.instanceUrl,
       authType: createSourceSettingDto.authType || AUTH_TYPE.OAUTH2,
       scopes: createSourceSettingDto.scopes,
-      secretsRef: createSourceSettingDto.secretsRef,
+      clientId: createSourceSettingDto.clientId,
+      clientSecret: createSourceSettingDto.clientSecret,
+      refreshToken: createSourceSettingDto.refreshToken,
     });
 
     return this.sourceSettingRepository.save(sourceSetting);

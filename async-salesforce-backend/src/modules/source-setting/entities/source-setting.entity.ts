@@ -25,8 +25,17 @@ export class SourceSettingEntity extends BaseEntity implements TSourceSetting {
   @Column({ type: 'text', array: true, nullable: true })
   scopes?: string[];
 
-  @Column({ type: 'varchar', length: 255, nullable: false })
-  secretsRef!: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  secretsRef?: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  clientId?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  clientSecret?: string;
+
+  @Column({ type: 'text', nullable: true })
+  refreshToken?: string;
 
   // relations
   @OneToOne(() => SourceEntity, (source) => source.sourceSetting, {

@@ -18,7 +18,7 @@ export class ProjectMemberService {
 
   async create(
     createProjectMemberDto: CreateProjectMemberRequestDto,
-  ): Promise<ProjectMemberEntity> {
+  ): Promise<GetOneProjectMemberResponseDto> {
     // Check if member already exists
     const existingMember = await this.projectMemberRepository.findOne({
       where: {
@@ -37,13 +37,21 @@ export class ProjectMemberService {
       role: createProjectMemberDto.role,
     });
 
-    return this.projectMemberRepository.save(projectMember);
+    const savedMember = await this.projectMemberRepository.save(projectMember);
+    
+    // Fetch with relations to return complete data
+    const memberWithRelations = await this.projectMemberRepository.findOne({
+      where: { id: savedMember.id },
+      relations: ['user', 'user.profile'],
+    });
+
+    return plainToInstance(GetOneProjectMemberResponseDto, memberWithRelations);
   }
 
   async findById(id: string): Promise<GetOneProjectMemberResponseDto> {
     const projectMember = await this.projectMemberRepository.findOne({
       where: { id },
-      relations: ['project', 'user'],
+      relations: ['project', 'user', 'user.profile'],
     });
 
     if (!projectMember) {
@@ -57,7 +65,9 @@ export class ProjectMemberService {
     filter: FilterProjectMemberRequestDto,
   ): Promise<GetPaginatedProjectMemberResponseDto> {
     const query =
-      this.projectMemberRepository.createQueryBuilder('projectMember');
+      this.projectMemberRepository.createQueryBuilder('projectMember')
+        .leftJoinAndSelect('projectMember.user', 'user')
+        .leftJoinAndSelect('user.profile', 'profile');
 
     if (filter.projectId) {
       query.andWhere('projectMember.projectId = :projectId', {

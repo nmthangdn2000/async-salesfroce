@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useMatchRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
   Button,
@@ -39,11 +39,14 @@ function SourcesPage() {
   const [selectedStatus, setSelectedStatus] = useState<SourceStatus | undefined>()
   const [pagination, setPagination] = useState({ page: 1, take: 10 })
   const queryClient = useQueryClient()
+  const matchRoute = useMatchRoute()
+  const isDetailPage = matchRoute({ to: '/sources/$id' })
 
   // Fetch projects for dropdown
   const { data: projectsData } = useQuery({
     queryKey: ['projects', 'all'],
     queryFn: () => projectApi.getAll({ page: 1, take: 1000 }),
+    enabled: !isDetailPage,
   })
 
   const { data, isLoading } = useQuery({
@@ -67,6 +70,7 @@ function SourcesPage() {
         environment: selectedEnvironment,
         status: selectedStatus,
       }),
+    enabled: !isDetailPage,
   })
 
   const createMutation = useMutation({
@@ -121,6 +125,15 @@ function SourcesPage() {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      render: (name: string, record: any) => (
+        <Link
+          to="/sources/$id"
+          params={{ id: record.id }}
+          style={{ textDecoration: 'none', color: 'inherit' }}
+        >
+          {name}
+        </Link>
+      ),
     },
     {
       title: 'Provider',
@@ -163,6 +176,11 @@ function SourcesPage() {
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
   ]
+
+  // If we're on a detail page, only render the outlet
+  if (isDetailPage) {
+    return <Outlet />
+  }
 
   return (
     <div style={{ padding: '24px' }}>

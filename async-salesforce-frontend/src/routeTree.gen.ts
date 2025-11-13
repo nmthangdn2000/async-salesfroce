@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SourcesIdRouteImport } from './routes/sources.$id'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
@@ -28,35 +30,57 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SourcesIdRoute = SourcesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SourcesRoute,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProjectsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/projects': typeof ProjectsRoute
-  '/sources': typeof SourcesRoute
+  '/projects': typeof ProjectsRouteWithChildren
+  '/sources': typeof SourcesRouteWithChildren
+  '/projects/$id': typeof ProjectsIdRoute
+  '/sources/$id': typeof SourcesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/projects': typeof ProjectsRoute
-  '/sources': typeof SourcesRoute
+  '/projects': typeof ProjectsRouteWithChildren
+  '/sources': typeof SourcesRouteWithChildren
+  '/projects/$id': typeof ProjectsIdRoute
+  '/sources/$id': typeof SourcesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/projects': typeof ProjectsRoute
-  '/sources': typeof SourcesRoute
+  '/projects': typeof ProjectsRouteWithChildren
+  '/sources': typeof SourcesRouteWithChildren
+  '/projects/$id': typeof ProjectsIdRoute
+  '/sources/$id': typeof SourcesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects' | '/sources'
+  fullPaths: '/' | '/projects' | '/sources' | '/projects/$id' | '/sources/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects' | '/sources'
-  id: '__root__' | '/' | '/projects' | '/sources'
+  to: '/' | '/projects' | '/sources' | '/projects/$id' | '/sources/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/projects'
+    | '/sources'
+    | '/projects/$id'
+    | '/sources/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ProjectsRoute: typeof ProjectsRoute
-  SourcesRoute: typeof SourcesRoute
+  ProjectsRoute: typeof ProjectsRouteWithChildren
+  SourcesRoute: typeof SourcesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +106,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sources/$id': {
+      id: '/sources/$id'
+      path: '/$id'
+      fullPath: '/sources/$id'
+      preLoaderRoute: typeof SourcesIdRouteImport
+      parentRoute: typeof SourcesRoute
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
   }
 }
 
+interface ProjectsRouteChildren {
+  ProjectsIdRoute: typeof ProjectsIdRoute
+}
+
+const ProjectsRouteChildren: ProjectsRouteChildren = {
+  ProjectsIdRoute: ProjectsIdRoute,
+}
+
+const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
+  ProjectsRouteChildren,
+)
+
+interface SourcesRouteChildren {
+  SourcesIdRoute: typeof SourcesIdRoute
+}
+
+const SourcesRouteChildren: SourcesRouteChildren = {
+  SourcesIdRoute: SourcesIdRoute,
+}
+
+const SourcesRouteWithChildren =
+  SourcesRoute._addFileChildren(SourcesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ProjectsRoute: ProjectsRoute,
-  SourcesRoute: SourcesRoute,
+  ProjectsRoute: ProjectsRouteWithChildren,
+  SourcesRoute: SourcesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

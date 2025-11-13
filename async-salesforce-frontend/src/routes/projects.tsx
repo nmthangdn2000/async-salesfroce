@@ -1,21 +1,24 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useMatchRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
   Button,
   Card,
-  Col,
   Form,
   Input,
   message,
   Modal,
-  Row,
   Space,
-  Table,
   Tag,
+  Empty,
+  Spin,
+  List,
+  Typography,
 } from 'antd'
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { projectApi } from '@/services/project.service'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+const { Title, Text } = Typography
 
 export const Route = createFileRoute('/projects')({
   component: ProjectsPage,
@@ -25,17 +28,21 @@ function ProjectsPage() {
   const [form] = Form.useForm()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [pagination, setPagination] = useState({ page: 1, take: 10 })
   const queryClient = useQueryClient()
+  const matchRoute = useMatchRoute()
+  
+  const isDetailPage = matchRoute({ to: '/projects/$id' })
 
+  // Fetch all projects - only when not on detail page
   const { data, isLoading } = useQuery({
-    queryKey: ['projects', pagination.page, pagination.take, searchText],
+    queryKey: ['projects', 'all', searchText],
     queryFn: () =>
       projectApi.getAll({
-        page: pagination.page,
-        take: pagination.take,
+        page: 1,
+        take: 1000,
         search: searchText || undefined,
       }),
+    enabled: !isDetailPage,
   })
 
   const createMutation = useMutation({
@@ -55,79 +62,79 @@ function ProjectsPage() {
     createMutation.mutate(values)
   }
 
-  const columns = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Slug',
-      dataIndex: 'slug',
-      key: 'slug',
-      render: (slug: string) => <Tag>{slug}</Tag>,
-    },
-    {
-      title: 'Created At',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-    {
-      title: 'Updated At',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-  ]
+  const projects = data?.items || []
 
   return (
-    <div style={{ padding: '24px' }}>
+    <>
+      {isDetailPage ? (
+        <Outlet />
+      ) : (
+        <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
       <Card>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-          <Col>
-            <h1 style={{ margin: 0 }}>Projects</h1>
-          </Col>
-          <Col>
-            <Space>
-              <Input
-                placeholder="Search projects..."
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => {
-                  setSearchText(e.target.value)
-                  setPagination({ ...pagination, page: 1 })
-                }}
-                style={{ width: 250 }}
-                allowClear
-              />
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsModalOpen(true)}
-              >
-                Create Project
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Title level={2} style={{ margin: 0 }}>
+              Projects
+            </Title>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Create Project
+            </Button>
+          </div>
+          <Input
+            placeholder="Search projects..."
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            style={{ maxWidth: 400 }}
+          />
+        </div>
 
-        <Table
-          columns={columns}
-          dataSource={data?.items || []}
-          loading={isLoading}
-          rowKey="id"
-          pagination={{
-            current: pagination.page,
-            pageSize: pagination.take,
-            total: data?.meta.totalItems || 0,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} projects`,
-            onChange: (page, pageSize) => {
-              setPagination({ page, take: pageSize })
-            },
-          }}
-        />
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Spin />
+          </div>
+        ) : projects.length === 0 ? (
+          <Empty
+            description="No projects found"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        ) : (
+          <List
+            grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4 }}
+            dataSource={projects}
+            renderItem={(project) => (
+              <List.Item>
+                <Link
+                  to="/projects/$id"
+                  params={{ id: project.id }}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Card
+                    hoverable
+                    style={{ height: '100%' }}
+                  >
+                    <Title level={4} style={{ margin: 0, marginBottom: 8 }}>
+                      {project.name}
+                    </Title>
+                    <Space>
+                      <Tag>{project.slug}</Tag>
+                    </Space>
+                    <div style={{ marginTop: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        Created: {new Date(project.createdAt).toLocaleDateString()}
+                      </Text>
+                    </div>
+                  </Card>
+                </Link>
+              </List.Item>
+            )}
+          />
+        )}
       </Card>
 
       <Modal
@@ -177,7 +184,9 @@ function ProjectsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+        </div>
+      )}
+    </>
   )
 }
 

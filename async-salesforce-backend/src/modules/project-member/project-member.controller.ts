@@ -12,7 +12,6 @@ import { CreateProjectMemberRequestDto } from 'src/modules/project-member/dto/re
 import { FilterProjectMemberRequestDto } from 'src/modules/project-member/dto/requests/filter-project-member.dto';
 import { GetPaginatedProjectMemberResponseDto } from 'src/modules/project-member/dto/response/get-all-project-member.dto';
 import { GetOneProjectMemberResponseDto } from 'src/modules/project-member/dto/response/get-one-project-member.dto';
-import { ProjectMemberEntity } from 'src/modules/project-member/entities/project-member.entity';
 
 import { ProjectMemberService } from './project-member.service';
 
@@ -31,7 +30,7 @@ export class ProjectMemberController {
   @ApiBody({ type: CreateProjectMemberRequestDto })
   async create(
     @Body() createProjectMemberDto: CreateProjectMemberRequestDto,
-  ): Promise<ProjectMemberEntity> {
+  ): Promise<GetOneProjectMemberResponseDto> {
     return this.projectMemberService.create(createProjectMemberDto);
   }
 

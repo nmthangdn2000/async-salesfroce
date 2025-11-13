@@ -51,10 +51,30 @@ export class CreateSourceSettingRequestDto
   scopes?: string[];
 
   @ApiProperty({
-    description: 'Secrets reference',
-    example: 'secret-key-ref',
+    description: 'OAuth 2.0 Client ID',
+    example: '3MVG9...',
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  secretsRef!: string;
+  @IsOptional()
+  clientId?: string;
+
+  @ApiProperty({
+    description: 'OAuth 2.0 Client Secret',
+    example: 'ABC123...',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  clientSecret?: string;
+
+  @ApiProperty({
+    description:
+      'OAuth 2.0 Refresh Token (manual entry if OAuth flow setup fails)',
+    example: '5Aep861...',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  refreshToken?: string;
 }

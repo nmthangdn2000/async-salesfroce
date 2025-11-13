@@ -36,4 +36,11 @@ export class GetOneSourceSettingResponseDto
   })
   @Expose()
   scopes?: string[];
+
+  @ApiResponseProperty({
+    type: String,
+    example: '3MVG9...',
+  })
+  @Expose()
+  clientId?: string;
 }
