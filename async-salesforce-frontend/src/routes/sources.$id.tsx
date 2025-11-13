@@ -8,21 +8,21 @@ import {
   Empty,
   Spin,
   Typography,
-  Modal,
+  Drawer,
   Form,
   Input,
   Select,
   message,
   Descriptions,
+  Alert,
   Divider,
 } from 'antd'
-import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import { sourceApi } from '@/services/source.service'
 import { projectApi } from '@/services/project.service'
 import { sourceSettingApi } from '@/services/source-setting.service'
 import {
   SourceProvider,
-  SourceEnvironment,
   SourceStatus,
 } from '@/types/source'
 import { AuthType } from '@/types/source-setting'
@@ -38,8 +38,10 @@ function SourceDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
   const [form] = Form.useForm()
-  const [isSettingModalOpen, setIsSettingModalOpen] = useState(false)
+  const [isSettingDrawerOpen, setIsSettingDrawerOpen] = useState(false)
+  const [isOAuthDrawerOpen, setIsOAuthDrawerOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+  const [showManualSetup, setShowManualSetup] = useState(false)
   const queryClient = useQueryClient()
 
   // Fetch source details
@@ -92,13 +94,6 @@ function SourceDetailPage() {
       }
     },
     onSuccess: () => {
-      message.success(
-        sourceSetting
-          ? 'Source setting updated successfully'
-          : 'Source setting created successfully',
-      )
-      setIsSettingModalOpen(false)
-      form.resetFields()
       queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
     },
     onError: (error: Error) => {
@@ -112,6 +107,63 @@ function SourceDetailPage() {
     // Remove /api suffix if present, then add oauth callback route
     const baseUrl = apiBaseUrl.replace(/\/api$/, '')
     return `${baseUrl}/api/auth/oauth/callback?sourceId=${id}`
+  }
+
+  // Generate Salesforce OAuth authorization URL
+  const getSalesforceAuthUrl = (formValues: any) => {
+    if (!formValues.instanceUrl || !formValues.clientId) {
+      return null
+    }
+
+    const instanceUrl = formValues.instanceUrl
+    const clientId = formValues.clientId
+    const scopes = formValues.scopes || 'api refresh_token offline_access'
+    const callbackUrl = getCallbackUrl()
+
+    // Determine authorization endpoint
+    const isSandbox = instanceUrl.includes('test') || instanceUrl.includes('sandbox')
+    const authEndpoint = isSandbox
+      ? 'https://test.salesforce.com/services/oauth2/authorize'
+      : 'https://login.salesforce.com/services/oauth2/authorize'
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: callbackUrl,
+      scope: scopes.replace(/,/g, ' '),
+    })
+
+    return `${authEndpoint}?${params.toString()}`
+  }
+
+  const handleAuthenticate = async () => {
+    try {
+      // Check if source setting exists
+      if (!sourceSetting) {
+        message.error('Please configure settings first')
+        return
+      }
+
+      if (!sourceSetting.instanceUrl || !sourceSetting.clientId) {
+        message.error('Please configure Instance URL and Client ID first')
+        return
+      }
+
+      // Use sourceSetting data to generate auth URL
+      const authUrl = getSalesforceAuthUrl({
+        instanceUrl: sourceSetting.instanceUrl,
+        clientId: sourceSetting.clientId,
+        scopes: sourceSetting.scopes?.join(', ') || 'api, refresh_token, offline_access',
+      })
+      
+      if (authUrl) {
+        window.location.href = authUrl
+      } else {
+        message.error('Failed to generate authorization URL')
+      }
+    } catch (error: any) {
+      message.error(error.message || 'Failed to authenticate')
+    }
   }
 
   const handleCopyCallbackUrl = async () => {
@@ -133,20 +185,23 @@ function SourceDetailPage() {
       form.setFieldsValue({
         instanceUrl: sourceSetting.instanceUrl,
         authType: sourceSetting.authType,
-        scopes: sourceSetting.scopes?.join(', ') || '',
+        scopes: sourceSetting.scopes?.join(', ') || 'api, refresh_token, offline_access',
         clientId: sourceSetting.clientId || '',
         refreshToken: sourceSetting.refreshToken || '',
         clientSecret: '', // Don't show secrets in form
       })
+      setShowManualSetup(!!sourceSetting.refreshToken)
     } else {
       form.setFieldsValue({
         authType: AuthType.OAUTH2,
+        scopes: 'api, refresh_token, offline_access',
       })
+      setShowManualSetup(false)
     }
-    setIsSettingModalOpen(true)
+    setIsSettingDrawerOpen(true)
   }
 
-  const handleSaveSetting = (values: {
+  const handleSaveSetting = async (values: {
     instanceUrl: string
     authType: AuthType
     scopes?: string
@@ -155,17 +210,29 @@ function SourceDetailPage() {
     refreshToken?: string
   }) => {
     const scopesArray = values.scopes
-      ? values.scopes.split(',').map((s) => s.trim()).filter(Boolean)
+      ? values.scopes.split(',').map((s: string) => s.trim()).filter(Boolean)
       : undefined
 
-    saveSettingMutation.mutate({
-      instanceUrl: values.instanceUrl,
-      authType: values.authType,
-      scopes: scopesArray,
-      clientId: values.clientId,
-      clientSecret: values.clientSecret,
-      refreshToken: values.refreshToken,
-    })
+    try {
+      await saveSettingMutation.mutateAsync({
+        instanceUrl: values.instanceUrl,
+        authType: values.authType,
+        scopes: scopesArray,
+        clientId: values.clientId,
+        clientSecret: values.clientSecret,
+        refreshToken: values.refreshToken,
+      })
+      message.success(
+        sourceSetting
+          ? 'Source setting updated successfully'
+          : 'Source setting created successfully',
+      )
+      setIsSettingDrawerOpen(false)
+      form.resetFields()
+      setShowManualSetup(false)
+    } catch (error) {
+      // Error is already handled in mutation onError
+    }
   }
 
   const getProviderColor = (provider: SourceProvider) => {
@@ -257,13 +324,31 @@ function SourceDetailPage() {
               </Text>
             </div>
           </div>
-          <Button
-            type="primary"
-            icon={<SettingOutlined />}
-            onClick={handleOpenSettingModal}
-          >
-            {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              icon={<SettingOutlined />}
+              onClick={handleOpenSettingModal}
+            >
+              {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
+            </Button>
+            {sourceSetting && (
+              <Button
+                type="default"
+                onClick={() => {
+                  // Load current refresh token if available
+                  if (sourceSetting.refreshToken) {
+                    form.setFieldsValue({
+                      refreshToken: sourceSetting.refreshToken,
+                    })
+                  }
+                  setIsOAuthDrawerOpen(true)
+                }}
+              >
+                Connect to Salesforce
+              </Button>
+            )}
+          </Space>
         </div>
       </Card>
 
@@ -368,42 +453,17 @@ function SourceDetailPage() {
         )}
       </Card>
 
-      {/* Source Setting Modal */}
-      <Modal
+      {/* Source Setting Drawer */}
+      <Drawer
         title={sourceSetting ? 'Edit Source Settings' : 'Configure Source Settings'}
-        open={isSettingModalOpen}
-        onCancel={() => {
-          setIsSettingModalOpen(false)
+        placement="right"
+        onClose={() => {
+          setIsSettingDrawerOpen(false)
           form.resetFields()
+          setShowManualSetup(false)
         }}
-        footer={
-          <Space>
-            <Button
-              onClick={() => {
-                setIsSettingModalOpen(false)
-                form.resetFields()
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => form.submit()}
-              loading={saveSettingMutation.isPending}
-            >
-              {sourceSetting ? 'Update' : 'Create'}
-            </Button>
-          </Space>
-        }
+        open={isSettingDrawerOpen}
         width={600}
-        style={{ top: 20 }}
-        bodyStyle={{
-          maxHeight: 'calc(100vh - 200px)',
-          overflowY: 'auto',
-          padding: '24px',
-          borderTop: '1px solid #f0f0f0',
-          borderBottom: '1px solid #f0f0f0',
-        }}
       >
         <Form
           form={form}
@@ -437,22 +497,6 @@ function SourceDetailPage() {
           </Form.Item>
 
           <Form.Item
-            label="OAuth 2.0 Client ID"
-            name="clientId"
-            tooltip="Consumer Key from Salesforce Connected App"
-          >
-            <Input placeholder="3MVG9..." />
-          </Form.Item>
-
-          <Form.Item
-            label="OAuth 2.0 Client Secret"
-            name="clientSecret"
-            tooltip="Consumer Secret from Salesforce Connected App"
-          >
-            <Input.Password placeholder="Enter client secret" />
-          </Form.Item>
-
-          <Form.Item
             label="Callback URL"
             tooltip="Copy this URL and add it to your Salesforce Connected App's Callback URLs"
             extra={
@@ -477,22 +521,182 @@ function SourceDetailPage() {
           </Form.Item>
 
           <Form.Item
-            label="Refresh Token (Optional)"
-            name="refreshToken"
-            tooltip="Manually enter refresh token if OAuth flow setup fails"
-          >
-            <Input placeholder="Enter refresh token manually if needed" />
-          </Form.Item>
-
-          <Form.Item
             label="Scopes (comma-separated)"
             name="scopes"
             tooltip="Enter OAuth scopes separated by commas, e.g., api, refresh_token"
+            initialValue="api, refresh_token, offline_access"
           >
-            <Input placeholder="api, refresh_token" />
+            <Input placeholder="api, refresh_token, offline_access" />
           </Form.Item>
+
+          <Form.Item
+            label="Client ID"
+            name="clientId"
+            tooltip="Consumer Key from Salesforce Connected App"
+          >
+            <Input placeholder="3MVG9..." />
+          </Form.Item>
+
+          <Form.Item
+            label="Client Secret"
+            name="clientSecret"
+            tooltip="Consumer Secret from Salesforce Connected App"
+          >
+            <Input.Password placeholder="Enter client secret" />
+          </Form.Item>
+
+          {showManualSetup && (
+            <Form.Item
+              label="Refresh Token (Optional)"
+              name="refreshToken"
+              tooltip="Manually enter refresh token if OAuth flow setup fails"
+            >
+              <Input placeholder="Enter refresh token manually if needed" />
+            </Form.Item>
+          )}
         </Form>
-      </Modal>
+
+        {/* Footer Actions */}
+        <Divider style={{ margin: '24px 0' }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button
+            onClick={() => {
+              setIsSettingDrawerOpen(false)
+              form.resetFields()
+              setShowManualSetup(false)
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            onClick={() => form.submit()}
+            loading={saveSettingMutation.isPending}
+          >
+            Save Settings
+          </Button>
+        </div>
+      </Drawer>
+
+      {/* OAuth Authentication Drawer */}
+      <Drawer
+        title="OAuth Authentication"
+        placement="right"
+        onClose={() => {
+          setIsOAuthDrawerOpen(false)
+          setShowManualSetup(false)
+        }}
+        open={isOAuthDrawerOpen}
+        width={500}
+      >
+        <Alert
+          message="Configure your settings first, then choose an authentication method"
+          type="info"
+          showIcon
+          style={{ marginBottom: 24 }}
+        />
+        
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <div>
+            <Title level={5} style={{ marginBottom: 12 }}>
+              Automatic Authentication
+            </Title>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+              Authenticate your Salesforce account automatically using OAuth 2.0 flow
+            </Text>
+            <Button
+              type="primary"
+              block
+              size="large"
+              disabled={showManualSetup}
+              onClick={handleAuthenticate}
+              loading={saveSettingMutation.isPending}
+            >
+              Authenticate your Salesforce account
+            </Button>
+          </div>
+
+          <Divider>OR</Divider>
+
+          <div>
+            <Title level={5} style={{ marginBottom: 12 }}>
+              Manual Setup
+            </Title>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+              Enter refresh token manually if OAuth flow setup fails
+            </Text>
+            <Button
+              type={showManualSetup ? 'primary' : 'default'}
+              block
+              size="large"
+              icon={showManualSetup ? <CloseOutlined /> : null}
+              onClick={() => {
+                setShowManualSetup(!showManualSetup)
+                if (!showManualSetup) {
+                  // Get refresh token from form if available
+                  const currentValues = form.getFieldsValue()
+                  if (!currentValues.refreshToken) {
+                    form.setFieldsValue({ refreshToken: '' })
+                  }
+                }
+              }}
+            >
+              {showManualSetup ? 'Cancel Manual Setup' : 'Set up manually'}
+            </Button>
+          </div>
+
+          {showManualSetup && (
+            <div style={{ marginTop: 16 }}>
+              <Form.Item
+                label="Refresh Token"
+                name="refreshToken"
+                tooltip="Manually enter refresh token if OAuth flow setup fails"
+                rules={[{ required: true, message: 'Please enter refresh token' }]}
+              >
+                <Input.TextArea
+                  placeholder="Enter refresh token manually if needed"
+                  rows={4}
+                />
+              </Form.Item>
+              <Button
+                type="primary"
+                block
+                onClick={async () => {
+                  try {
+                    const formValues = form.getFieldsValue()
+                    if (!formValues.refreshToken) {
+                      message.error('Please enter refresh token')
+                      return
+                    }
+
+                    if (!sourceSetting) {
+                      message.error('Please save settings first')
+                      return
+                    }
+
+                    await saveSettingMutation.mutateAsync({
+                      instanceUrl: sourceSetting.instanceUrl,
+                      authType: sourceSetting.authType,
+                      scopes: sourceSetting.scopes,
+                      clientId: sourceSetting.clientId,
+                      refreshToken: formValues.refreshToken,
+                    })
+
+                    message.success('Refresh token saved successfully')
+                    setIsOAuthDrawerOpen(false)
+                    queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
+                  } catch (error) {
+                    // Error is already handled in mutation onError
+                  }
+                }}
+                loading={saveSettingMutation.isPending}
+              >
+                Save Refresh Token
+              </Button>
+            </div>
+          )}
+        </Space>
+      </Drawer>
     </div>
   )
 }

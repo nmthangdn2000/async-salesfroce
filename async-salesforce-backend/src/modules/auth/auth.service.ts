@@ -7,6 +7,8 @@ import { ERROR_MESSAGES } from '@app/shared/constants/error.constant';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { LoginResponseDto } from 'src/modules/auth/dto/response/login-response.dto';
+import { SourceSettingRepository } from 'src/modules/source-setting/source-setting.repository';
+import { SourceSettingService } from 'src/modules/source-setting/source-setting.service';
 import { UserRepository } from 'src/modules/user/user.repository';
 
 import { LoginRequestDto } from './dto/request/login-request.dto';
@@ -16,6 +18,8 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtAuthService: JwtAuthService,
+    private readonly sourceSettingService: SourceSettingService,
+    private readonly sourceSettingRepository: SourceSettingRepository,
   ) {}
 
   async login(input: LoginRequestDto) {
@@ -83,5 +87,80 @@ export class AuthService {
         lastName: input.lastName,
       },
     });
+  }
+
+  async handleOAuthCallback(code: string, sourceId: string): Promise<void> {
+    const sourceSetting =
+      await this.sourceSettingService.findBySourceId(sourceId);
+
+    if (!sourceSetting) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound);
+    }
+
+    if (!sourceSetting.clientId) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound, 400);
+    }
+
+    // Get client secret from repository (not exposed in response DTO)
+    const sourceSettingEntity = await this.sourceSettingRepository.findOne({
+      where: { sourceId },
+    });
+
+    if (!sourceSettingEntity || !sourceSettingEntity.clientSecret) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound, 400);
+    }
+
+    // Determine token endpoint based on instance URL
+    const instanceUrl = sourceSetting.instanceUrl;
+    const isSandbox =
+      instanceUrl.includes('test') || instanceUrl.includes('sandbox');
+    const tokenEndpoint = isSandbox
+      ? 'https://test.salesforce.com/services/oauth2/token'
+      : 'https://login.salesforce.com/services/oauth2/token';
+
+    // Get callback URL
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const callbackUrl = `${backendUrl}/api/auth/oauth/callback?sourceId=${sourceId}`;
+
+    // Exchange authorization code for access token and refresh token
+    // At this point, we've already validated clientId and clientSecret exist
+    const clientId = sourceSetting.clientId as string;
+    const clientSecret = sourceSettingEntity.clientSecret;
+
+    const tokenRequestParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: callbackUrl,
+      code: code,
+    });
+
+    try {
+      const tokenResponse = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: tokenRequestParams.toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        throw new CustomHttpException(ERROR_MESSAGES.OAuthCallbackFailed, 400);
+      }
+
+      const tokenData = (await tokenResponse.json()) as {
+        refresh_token: string;
+      };
+
+      // Update source setting with refresh token
+      await this.sourceSettingService.update(sourceSettingEntity.id, {
+        refreshToken: tokenData.refresh_token,
+      });
+    } catch (error: unknown) {
+      if (error instanceof CustomHttpException) {
+        throw error;
+      }
+      throw new CustomHttpException(ERROR_MESSAGES.OAuthCallbackFailed, 500);
+    }
   }
 }
