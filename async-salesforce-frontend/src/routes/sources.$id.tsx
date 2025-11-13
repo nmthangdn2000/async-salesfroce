@@ -109,33 +109,6 @@ function SourceDetailPage() {
     return `${baseUrl}/api/auth/oauth/callback?sourceId=${id}`
   }
 
-  // Generate Salesforce OAuth authorization URL
-  const getSalesforceAuthUrl = (formValues: any) => {
-    if (!formValues.instanceUrl || !formValues.clientId) {
-      return null
-    }
-
-    const instanceUrl = formValues.instanceUrl
-    const clientId = formValues.clientId
-    const scopes = formValues.scopes || 'api refresh_token offline_access'
-    const callbackUrl = getCallbackUrl()
-
-    // Determine authorization endpoint
-    const isSandbox = instanceUrl.includes('test') || instanceUrl.includes('sandbox')
-    const authEndpoint = isSandbox
-      ? 'https://test.salesforce.com/services/oauth2/authorize'
-      : 'https://login.salesforce.com/services/oauth2/authorize'
-
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: clientId,
-      redirect_uri: callbackUrl,
-      scope: scopes.replace(/,/g, ' '),
-    })
-
-    return `${authEndpoint}?${params.toString()}`
-  }
-
   const handleAuthenticate = async () => {
     try {
       // Check if source setting exists
@@ -144,23 +117,12 @@ function SourceDetailPage() {
         return
       }
 
-      if (!sourceSetting.instanceUrl || !sourceSetting.clientId) {
-        message.error('Please configure Instance URL and Client ID first')
-        return
-      }
-
-      // Use sourceSetting data to generate auth URL
-      const authUrl = getSalesforceAuthUrl({
-        instanceUrl: sourceSetting.instanceUrl,
-        clientId: sourceSetting.clientId,
-        scopes: sourceSetting.scopes?.join(', ') || 'api, refresh_token, offline_access',
-      })
+      // Call backend API to get authorization URL and open in new window
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+      const authUrl = `${apiBaseUrl}/auth/oauth/authorize?sourceId=${id}`
       
-      if (authUrl) {
-        window.location.href = authUrl
-      } else {
-        message.error('Failed to generate authorization URL')
-      }
+      // Open in new window/tab
+      window.open(authUrl, '_blank', 'noopener,noreferrer')
     } catch (error: any) {
       message.error(error.message || 'Failed to authenticate')
     }

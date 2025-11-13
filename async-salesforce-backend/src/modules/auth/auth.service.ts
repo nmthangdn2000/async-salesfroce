@@ -89,6 +89,42 @@ export class AuthService {
     });
   }
 
+  async getOAuthAuthorizationUrl(sourceId: string): Promise<string> {
+    if (!sourceId) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound, 400);
+    }
+
+    const sourceSetting =
+      await this.sourceSettingService.findBySourceId(sourceId);
+
+    if (!sourceSetting) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound);
+    }
+
+    if (!sourceSetting.instanceUrl || !sourceSetting.clientId) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound, 400);
+    }
+
+    const instanceUrl = sourceSetting.instanceUrl;
+
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const callbackUrl = `${backendUrl}/api/auth/oauth/callback?sourceId=${sourceId}`;
+
+    const scopes =
+      sourceSetting.scopes?.join(' ') || 'api refresh_token offline_access';
+
+    // Build authorization URL
+    const clientId = sourceSetting.clientId as string;
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: callbackUrl,
+      scope: scopes,
+    });
+
+    return `${instanceUrl}/services/oauth2/authorize?${params.toString()}`;
+  }
+
   async handleOAuthCallback(code: string, sourceId: string): Promise<void> {
     const sourceSetting =
       await this.sourceSettingService.findBySourceId(sourceId);

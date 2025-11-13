@@ -5,8 +5,10 @@ import {
   Get,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { LoginApiDoc } from 'src/modules/auth/docs/login.doc';
 import { RegisterApiDoc } from 'src/modules/auth/docs/register.doc';
 import { LoginRequestDto } from 'src/modules/auth/dto/request/login-request.dto';
@@ -29,6 +31,22 @@ export class AuthController {
   @RegisterApiDoc('Register')
   register(@Body() input: RegisterRequestDto) {
     return this.authService.register(input);
+  }
+
+  @Get('oauth/authorize')
+  @ApiOperation({ summary: 'Get OAuth 2.0 authorization URL for Salesforce' })
+  @ApiQuery({
+    name: 'sourceId',
+    required: true,
+    description: 'Source ID',
+  })
+  @ApiResponse({ status: 200, description: 'OAuth authorization URL' })
+  async oauthAuthorize(
+    @Query('sourceId') sourceId: string,
+    @Res() res: Response,
+  ) {
+    const authUrl = await this.authService.getOAuthAuthorizationUrl(sourceId);
+    return res.redirect(authUrl);
   }
 
   @Get('oauth/callback')
