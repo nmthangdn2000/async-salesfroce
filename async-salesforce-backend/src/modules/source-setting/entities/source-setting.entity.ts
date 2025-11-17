@@ -37,6 +37,12 @@ export class SourceSettingEntity extends BaseEntity implements TSourceSetting {
   @Column({ type: 'text', nullable: true })
   refreshToken?: string;
 
+  @Column({ type: 'text', nullable: true })
+  accessToken?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  expiresAt?: Date;
+
   // relations
   @OneToOne(() => SourceEntity, (source) => source.sourceSetting, {
     onDelete: 'CASCADE',

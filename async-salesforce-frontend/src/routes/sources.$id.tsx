@@ -16,11 +16,13 @@ import {
   Alert,
   Divider,
   Badge,
+  Switch,
 } from 'antd'
-import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined, CloseOutlined, SyncOutlined, DatabaseOutlined, SearchOutlined } from '@ant-design/icons'
 import { sourceApi } from '@/services/source.service'
 import { projectApi } from '@/services/project.service'
 import { sourceSettingApi } from '@/services/source-setting.service'
+import { catalogApi } from '@/services/catalog.service'
 import {
   SourceProvider,
   SourceStatus,
@@ -42,6 +44,11 @@ function SourceDetailPage() {
   const [isOAuthDrawerOpen, setIsOAuthDrawerOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const [showManualSetup, setShowManualSetup] = useState(false)
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
+  const [objectSearch, setObjectSearch] = useState<string>('')
+  const [objectFilterSelected, setObjectFilterSelected] = useState<boolean | undefined>(undefined)
+  const [fieldSearch, setFieldSearch] = useState<string>('')
+  const [fieldFilterSelected, setFieldFilterSelected] = useState<boolean | undefined>(undefined)
   const queryClient = useQueryClient()
 
   // Fetch source details
@@ -95,6 +102,104 @@ function SourceDetailPage() {
     },
     onError: (error: Error) => {
       message.error(error.message || 'Failed to save source setting')
+    },
+  })
+
+  // Fetch catalog objects from database
+  const { data: catalogData } = useQuery({
+    queryKey: ['catalog-objects', id, objectSearch, objectFilterSelected],
+    queryFn: () =>
+      catalogApi.getObjects({
+        sourceId: id,
+        search: objectSearch || undefined,
+        isSelected: objectFilterSelected,
+        page: 1,
+        take: 1000,
+      }),
+    enabled: !!id,
+    retry: false,
+  })
+
+  // Sync objects from Salesforce mutation
+  const syncObjectsMutation = useMutation({
+    mutationFn: async () => {
+      return catalogApi.syncObjects(id)
+    },
+    onSuccess: (data) => {
+      message.success(
+        `Successfully synced! Total: ${data.totalObjects}, Updated: ${data.updatedObjects}, Created: ${data.createdObjects}, Removed: ${data.removedObjects}`
+      )
+      // Refresh catalog objects after sync
+      queryClient.invalidateQueries({ queryKey: ['catalog-objects', id] })
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to sync objects from Salesforce')
+    },
+  })
+
+  // Fetch catalog fields from database
+  const { data: fieldsData, isLoading: fieldsLoading, error: fieldsError } = useQuery({
+    queryKey: ['catalog-fields', selectedObjectId, fieldSearch, fieldFilterSelected],
+    queryFn: () => {
+      if (!selectedObjectId) {
+        throw new Error('Object ID is required')
+      }
+      return catalogApi.getFields({
+        objectId: selectedObjectId,
+        search: fieldSearch || undefined,
+        isSelected: fieldFilterSelected,
+        page: 1,
+        take: 1000,
+      })
+    },
+    enabled: !!selectedObjectId,
+    retry: false,
+  })
+
+  // Sync fields from Salesforce mutation
+  const syncFieldsMutation = useMutation({
+    mutationFn: async (objectId: string) => {
+      return catalogApi.syncFields(objectId)
+    },
+    onSuccess: (data) => {
+      message.success(
+        `Successfully synced fields! Total: ${data.totalFields}, Updated: ${data.updatedFields}, Created: ${data.createdFields}, Removed: ${data.removedFields}`
+      )
+      // Refresh catalog fields after sync
+      if (selectedObjectId) {
+        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
+      }
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to sync fields from Salesforce')
+    },
+  })
+
+  // Toggle object selected mutation
+  const toggleObjectSelectedMutation = useMutation({
+    mutationFn: async ({ objectId, isSelected }: { objectId: string; isSelected: boolean }) => {
+      return catalogApi.toggleObjectSelected(objectId, isSelected)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['catalog-objects', id] })
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to update object selection')
+    },
+  })
+
+  // Toggle field selected mutation
+  const toggleFieldSelectedMutation = useMutation({
+    mutationFn: async ({ fieldId, isSelected }: { fieldId: string; isSelected: boolean }) => {
+      return catalogApi.toggleFieldSelected(fieldId, isSelected)
+    },
+    onSuccess: () => {
+      if (selectedObjectId) {
+        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
+      }
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to update field selection')
     },
   })
 
@@ -363,20 +468,22 @@ function SourceDetailPage() {
                 {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
               </Button>
               {sourceSetting && (
-                <Button
-                  type="default"
-                  onClick={() => {
-                    // Load current refresh token if available
-                    if (sourceSetting.refreshToken) {
-                      form.setFieldsValue({
-                        refreshToken: sourceSetting.refreshToken,
-                      })
-                    }
-                    setIsOAuthDrawerOpen(true)
-                  }}
-                >
-                  Connect to Salesforce
-                </Button>
+                <>
+                  <Button
+                    type="default"
+                    onClick={() => {
+                      // Load current refresh token if available
+                      if (sourceSetting.refreshToken) {
+                        form.setFieldsValue({
+                          refreshToken: sourceSetting.refreshToken,
+                        })
+                      }
+                      setIsOAuthDrawerOpen(true)
+                    }}
+                  >
+                    Connect to Salesforce
+                  </Button>
+                </>
               )}
             </Space>
             <div>
@@ -388,6 +495,270 @@ function SourceDetailPage() {
           </Space>
         </div>
       </Card>
+
+      {/* Catalog Objects and Fields - 3/7 Layout */}
+      {catalogData && catalogData.items.length > 0 && (
+        <Card
+          title={
+            <Space>
+              <DatabaseOutlined />
+              <span>Catalog Objects & Fields</span>
+            </Space>
+          }
+          style={{ marginBottom: 24 }}
+        >
+          <div style={{ display: 'flex', gap: 16, minHeight: '500px' }}>
+            {/* Left: Objects List (3 columns) */}
+            <div style={{ flex: '0 0 30%', borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={5} style={{ margin: 0 }}>
+                  Objects ({catalogData?.meta.totalItems || 0})
+                </Title>
+                {sourceSetting?.refreshToken && (
+                  <Button
+                    type="default"
+                    size="small"
+                    icon={<SyncOutlined />}
+                    loading={syncObjectsMutation.isPending}
+                    onClick={() => syncObjectsMutation.mutate()}
+                  >
+                    Sync
+                  </Button>
+                )}
+              </div>
+              {/* Search and Filter for Objects */}
+              <Space style={{ width: '100%', marginBottom: 16 }} size={8}>
+                <Input
+                  placeholder="Search objects..."
+                  prefix={<SearchOutlined />}
+                  value={objectSearch}
+                  onChange={(e) => setObjectSearch(e.target.value)}
+                  allowClear
+                  style={{ flex: 1 }}
+                />
+                <Select
+                  placeholder="Filter by selection"
+                  value={objectFilterSelected === undefined ? 'all' : objectFilterSelected ? 'selected' : 'unselected'}
+                  onChange={(value) => {
+                    if (value === 'all') {
+                      setObjectFilterSelected(undefined)
+                    } else {
+                      setObjectFilterSelected(value === 'selected')
+                    }
+                  }}
+                  style={{ width: 150 }}
+                >
+                  <Select.Option value="all">All Objects</Select.Option>
+                  <Select.Option value="selected">Selected Only</Select.Option>
+                  <Select.Option value="unselected">Unselected Only</Select.Option>
+                </Select>
+              </Space>
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {!catalogData || catalogData.items.length === 0 ? (
+                  <Empty description="No objects found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                ) : (
+                  <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                    {[...catalogData.items]
+                      .sort((a, b) => {
+                        const nameA = (a.label || a.apiName).toLowerCase()
+                        const nameB = (b.label || b.apiName).toLowerCase()
+                        return nameA.localeCompare(nameB)
+                      })
+                      .map((obj) => (
+                      <Card
+                        key={obj.id}
+                        size="small"
+                        hoverable
+                        onClick={() => {
+                          setSelectedObjectId(obj.id)
+                        }}
+                        style={{
+                          cursor: 'pointer',
+                          border: selectedObjectId === obj.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                          backgroundColor: selectedObjectId === obj.id ? '#e6f7ff' : '#fff',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                }}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                }}
+                              >
+                                <Switch
+                                  checked={obj.isSelected}
+                                  size="small"
+                                  onChange={(checked) => {
+                                    toggleObjectSelectedMutation.mutate({
+                                      objectId: obj.id,
+                                      isSelected: checked,
+                                    })
+                                  }}
+                                />
+                              </div>
+                              <Text strong style={{ flex: 1 }}>
+                                {obj.label || obj.apiName}
+                              </Text>
+                            </div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              {obj.apiName}
+                            </Text>
+                          </div>
+                        </div>
+                      </Card>
+                      ))}
+                  </Space>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Fields List (7 columns) */}
+            <div style={{ flex: '0 0 70%', paddingLeft: 16 }}>
+              {selectedObjectId ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Title level={5} style={{ margin: 0 }}>
+                      Fields
+                      {fieldsData && ` (${fieldsData.meta.totalItems})`}
+                    </Title>
+                    {sourceSetting?.refreshToken && (
+                      <Button
+                        type="default"
+                        size="small"
+                        icon={<SyncOutlined />}
+                        loading={syncFieldsMutation.isPending}
+                        onClick={() => syncFieldsMutation.mutate(selectedObjectId)}
+                      >
+                        Sync Fields
+                      </Button>
+                    )}
+                  </div>
+                  {/* Search and Filter for Fields */}
+                  <Space style={{ width: '100%', marginBottom: 16 }} size={8}>
+                    <Input
+                      placeholder="Search fields..."
+                      prefix={<SearchOutlined />}
+                      value={fieldSearch}
+                      onChange={(e) => setFieldSearch(e.target.value)}
+                      allowClear
+                      style={{ flex: 1 }}
+                    />
+                    <Select
+                      placeholder="Filter by selection"
+                      value={fieldFilterSelected === undefined ? 'all' : fieldFilterSelected ? 'selected' : 'unselected'}
+                      onChange={(value) => {
+                        if (value === 'all') {
+                          setFieldFilterSelected(undefined)
+                        } else {
+                          setFieldFilterSelected(value === 'selected')
+                        }
+                      }}
+                      style={{ width: 150 }}
+                    >
+                      <Select.Option value="all">All Fields</Select.Option>
+                      <Select.Option value="selected">Selected Only</Select.Option>
+                      <Select.Option value="unselected">Unselected Only</Select.Option>
+                    </Select>
+                  </Space>
+                  {fieldsLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                      <Spin />
+                    </div>
+                  ) : fieldsError ? (
+                    <Empty
+                      description={
+                        <div>
+                          <Text type="danger">Error loading fields: {(fieldsError as Error).message}</Text>
+                        </div>
+                      }
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      style={{ marginTop: 40 }}
+                    />
+                  ) : fieldsData && fieldsData.items.length > 0 ? (
+                    <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                        {fieldsData.items.map((field) => (
+                          <Card
+                            key={field.id}
+                            size="small"
+                            style={{
+                              border: field.isSelected ? '1px solid #52c41a' : '1px solid #d9d9d9',
+                              backgroundColor: field.isSelected ? '#f6ffed' : '#fff',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                  <Switch
+                                    checked={field.isSelected}
+                                    size="small"
+                                    disabled={field.isRequired}
+                                    onChange={(checked) => {
+                                      toggleFieldSelectedMutation.mutate({
+                                        fieldId: field.id,
+                                        isSelected: checked,
+                                      })
+                                    }}
+                                  />
+                                  <Space>
+                                    <Text strong>{field.label || field.apiName}</Text>
+                                    {field.isRequired && (
+                                      <Tag color="red">
+                                        Required
+                                      </Tag>
+                                    )}
+                                  </Space>
+                                </div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {field.apiName} • {field.sfType}
+                                  {field.length && ` • Length: ${field.length}`}
+                                  {field.precision && field.scale && ` • Precision: ${field.precision},${field.scale}`}
+                                </Text>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </Space>
+                    </div>
+                  ) : (
+                    <Empty
+                      description={
+                        <div>
+                          <Text>No fields found for this object</Text>
+                          <br />
+                          {sourceSetting?.refreshToken && (
+                            <Button
+                              type="link"
+                              size="small"
+                              onClick={() => syncFieldsMutation.mutate(selectedObjectId)}
+                              loading={syncFieldsMutation.isPending}
+                            >
+                              Sync fields from Salesforce
+                            </Button>
+                          )}
+                        </div>
+                      }
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      style={{ marginTop: 40 }}
+                    />
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '450px' }}>
+                  <Empty
+                    description="Select an object to view its fields"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Source Details */}
 

@@ -162,7 +162,12 @@ export class AuthService {
 
     try {
       const tokenResponse = await this.httpService.axiosRef.post<{
+        access_token: string;
         refresh_token: string;
+        issued_at: string;
+        token_type: string;
+        instance_url: string;
+        id: string;
       }>(
         `${sourceSetting.instanceUrl}/services/oauth2/token`,
         tokenRequestParams.toString(),
@@ -173,10 +178,19 @@ export class AuthService {
         },
       );
 
-      // Update source setting with refresh token
+      // issued_at + 2 tiếng
+      const expiresAt =
+        parseInt(tokenResponse.data.issued_at, 10) + 2 * 60 * 60 * 1000;
+
+      // Update source setting with refresh token (via service)
       await this.sourceSettingService.update(sourceSetting.id, {
         refreshToken: tokenResponse.data.refresh_token,
       });
+
+      // Update access token and expires_at directly via repository (internal fields)
+      sourceSetting.accessToken = tokenResponse.data.access_token;
+      sourceSetting.expiresAt = new Date(expiresAt);
+      await this.sourceSettingRepository.save(sourceSetting);
     } catch (error: unknown) {
       if (error instanceof CustomHttpException) {
         throw error;

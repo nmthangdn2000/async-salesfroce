@@ -46,5 +46,7 @@ export type TSourceSetting = TBase & {
   clientId?: string;
   clientSecret?: string;
   refreshToken?: string;
+  accessToken?: string;
+  expiresAt?: Date;
   source: TSource;
 };

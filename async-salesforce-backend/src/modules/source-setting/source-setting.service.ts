@@ -1,6 +1,7 @@
 import { CustomHttpException } from '@app/common/exceptions/custom-http.exception';
 import { ERROR_MESSAGES } from '@app/shared/constants/error.constant';
 import { AUTH_TYPE } from '@app/shared/models/source.model';
+import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CreateSourceSettingRequestDto } from 'src/modules/source-setting/dto/requests/create-source-setting.dto';
@@ -15,6 +16,7 @@ import { SourceSettingRepository } from './source-setting.repository';
 export class SourceSettingService {
   constructor(
     private readonly sourceSettingRepository: SourceSettingRepository,
+    private readonly httpService: HttpService,
   ) {}
 
   async create(
@@ -139,5 +141,92 @@ export class SourceSettingService {
     }
 
     await this.sourceSettingRepository.remove(sourceSetting);
+  }
+
+  /**
+   * Get or refresh access token for a source
+   * Returns valid access token, refreshing if necessary
+   */
+  async getValidAccessToken(
+    sourceId: string,
+  ): Promise<{ accessToken: string; instanceUrl: string }> {
+    const sourceSetting = await this.sourceSettingRepository.findOne({
+      where: { sourceId },
+    });
+
+    if (
+      !sourceSetting ||
+      !sourceSetting.clientId ||
+      !sourceSetting.clientSecret
+    ) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound);
+    }
+
+    // Check if access token exists and is still valid (not expired)
+    const now = new Date();
+    const isTokenValid =
+      sourceSetting.accessToken &&
+      sourceSetting.expiresAt &&
+      sourceSetting.expiresAt > now;
+
+    if (isTokenValid && sourceSetting.accessToken) {
+      return {
+        accessToken: sourceSetting.accessToken,
+        instanceUrl: sourceSetting.instanceUrl,
+      };
+    }
+
+    // Token expired or doesn't exist, refresh it
+    if (!sourceSetting.refreshToken) {
+      throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound, 400);
+    }
+
+    // Refresh access token using refresh_token
+    const tokenRequestParams = new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: sourceSetting.clientId,
+      client_secret: sourceSetting.clientSecret,
+      refresh_token: sourceSetting.refreshToken,
+    });
+
+    try {
+      const tokenResponse = await this.httpService.axiosRef.post<{
+        access_token: string;
+        refresh_token: string;
+        issued_at: string;
+        token_type: string;
+        instance_url: string;
+        id: string;
+      }>(
+        `${sourceSetting.instanceUrl}/services/oauth2/token`,
+        tokenRequestParams.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      // Calculate expires_at (issued_at + 2 hours)
+      const issuedAt = parseInt(tokenResponse.data.issued_at, 10);
+      const expiresAt = new Date(issuedAt + 2 * 60 * 60 * 1000);
+
+      // Update source setting with new access token
+      sourceSetting.accessToken = tokenResponse.data.access_token;
+      sourceSetting.expiresAt = expiresAt;
+      // Update refresh_token if provided (Salesforce may issue new refresh token)
+      if (tokenResponse.data.refresh_token) {
+        sourceSetting.refreshToken = tokenResponse.data.refresh_token;
+      }
+      await this.sourceSettingRepository.save(sourceSetting);
+
+      return {
+        accessToken: tokenResponse.data.access_token,
+        instanceUrl:
+          tokenResponse.data.instance_url || sourceSetting.instanceUrl,
+      };
+    } catch {
+      throw new CustomHttpException(ERROR_MESSAGES.OAuthCallbackFailed, 500);
+    }
   }
 }
