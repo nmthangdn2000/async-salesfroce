@@ -2,7 +2,7 @@ import { BaseModelResponseDto } from '@app/common/base/model-response.dto.base';
 import { TGetSourceSettingResponseDto } from '@app/shared/dtos/source-setting/source-setting.dto';
 import { AUTH_TYPE } from '@app/shared/models/source.model';
 import { ApiResponseProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 
 export class GetOneSourceSettingResponseDto
   extends BaseModelResponseDto
@@ -43,4 +43,21 @@ export class GetOneSourceSettingResponseDto
   })
   @Expose()
   clientId?: string;
+
+  @ApiResponseProperty({
+    type: String,
+    example: 'ABC**',
+  })
+  @Expose()
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'string') {
+      return value;
+    }
+    // Mask secret: show first 3 characters and replace rest with **
+    if (value.length <= 3) {
+      return '**';
+    }
+    return value.substring(0, 3) + '**';
+  })
+  clientSecret?: string;
 }

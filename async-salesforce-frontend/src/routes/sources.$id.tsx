@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Button,
   Card,
@@ -13,9 +13,9 @@ import {
   Input,
   Select,
   message,
-  Descriptions,
   Alert,
   Divider,
+  Badge,
 } from 'antd'
 import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import { sourceApi } from '@/services/source.service'
@@ -62,10 +62,7 @@ function SourceDetailPage() {
   })
 
   // Fetch source setting
-  const {
-    data: sourceSetting,
-    isLoading: settingLoading,
-  } = useQuery({
+  const { data: sourceSetting } = useQuery({
     queryKey: ['source-settings', id],
     queryFn: () => sourceSettingApi.getBySourceId(id),
     enabled: !!id,
@@ -101,12 +98,50 @@ function SourceDetailPage() {
     },
   })
 
+  // Listen for OAuth callback messages from popup window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify origin for security
+      const allowedOrigin = window.location.origin
+      if (event.origin !== allowedOrigin) {
+        return
+      }
+
+      // Check if message is from OAuth callback
+      if (event.data?.type === 'oauth-callback') {
+        const { success, error: errorMessage, sourceId: callbackSourceId } = event.data
+
+        // Only handle if sourceId matches current source
+        if (callbackSourceId && callbackSourceId !== id) {
+          return
+        }
+
+        if (success) {
+          message.success('Successfully connected to Salesforce!')
+          // Refresh source settings
+          queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
+          setIsOAuthDrawerOpen(false)
+        } else {
+          message.error(
+            errorMessage || 'Failed to connect to Salesforce. Please try again.'
+          )
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+    }
+  }, [id, queryClient])
+
   // Generate callback URL from API base URL
   const getCallbackUrl = () => {
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
     // Remove /api suffix if present, then add oauth callback route
     const baseUrl = apiBaseUrl.replace(/\/api$/, '')
-    return `${baseUrl}/api/auth/oauth/callback?sourceId=${id}`
+    return `${baseUrl}/api/auth/oauth/callback`
   }
 
   const handleAuthenticate = async () => {
@@ -117,12 +152,35 @@ function SourceDetailPage() {
         return
       }
 
-      // Call backend API to get authorization URL and open in new window
+      // Call backend API to get authorization URL and open in popup window
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-      const authUrl = `${apiBaseUrl}/auth/oauth/authorize?sourceId=${id}`
+      const authUrl = `${apiBaseUrl}/auth/oauth/authenticate?sourceId=${id}`
       
-      // Open in new window/tab
-      window.open(authUrl, '_blank', 'noopener,noreferrer')
+      // Calculate center position for popup
+      const width = 600
+      const height = 700
+      const left = (window.screen.width - width) / 2
+      const top = (window.screen.height - height) / 2
+      
+      // Open in popup window (similar to Google OAuth)
+      // Remove noopener to allow window.close() to work
+      const popup = window.open(
+        authUrl,
+        'oauth_popup',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      )
+      
+      // Store reference to popup window for potential future use
+      if (popup) {
+        // Check if popup is closed periodically
+        const checkPopup = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopup)
+            // Refresh data when popup closes
+            queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
+          }
+        }, 500)
+      }
     } catch (error: any) {
       message.error(error.message || 'Failed to authenticate')
     }
@@ -175,15 +233,22 @@ function SourceDetailPage() {
       ? values.scopes.split(',').map((s: string) => s.trim()).filter(Boolean)
       : undefined
 
+    // Prepare update data - don't send clientSecret if it's empty
+    const updateData: any = {
+      instanceUrl: values.instanceUrl,
+      authType: values.authType,
+      scopes: scopesArray,
+      clientId: values.clientId,
+      refreshToken: values.refreshToken,
+    }
+
+    // Only include clientSecret if it has a value (non-empty string)
+    if (values.clientSecret && values.clientSecret.trim() !== '') {
+      updateData.clientSecret = values.clientSecret
+    }
+
     try {
-      await saveSettingMutation.mutateAsync({
-        instanceUrl: values.instanceUrl,
-        authType: values.authType,
-        scopes: scopesArray,
-        clientId: values.clientId,
-        clientSecret: values.clientSecret,
-        refreshToken: values.refreshToken,
-      })
+      await saveSettingMutation.mutateAsync(updateData)
       message.success(
         sourceSetting
           ? 'Source setting updated successfully'
@@ -262,9 +327,17 @@ function SourceDetailPage() {
             >
               Back to Sources
             </Button>
-            <Title level={2} style={{ margin: 0, marginBottom: 8 }}>
-              {source.name}
-            </Title>
+            <Space align="center" style={{ marginBottom: 8 }}>
+              <Title level={2} style={{ margin: 0 }}>
+                {source.name}
+              </Title>
+              {sourceSetting?.refreshToken && (
+                <Badge 
+                  status="success" 
+                  text={<Text type="success" strong>Connected</Text>}
+                />
+              )}
+            </Space>
             <Space wrap>
               <Tag color={getProviderColor(source.provider)}>
                 {source.provider.toUpperCase()}
@@ -279,141 +352,44 @@ function SourceDetailPage() {
                 </Tag>
               )}
             </Space>
-            <div style={{ marginTop: 16 }}>
-              <Text type="secondary">
+          </div>
+          <Space direction="vertical" align="end" style={{ alignItems: 'flex-end' }}>
+            <Space>
+              <Button
+                type="primary"
+                icon={<SettingOutlined />}
+                onClick={handleOpenSettingModal}
+              >
+                {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
+              </Button>
+              {sourceSetting && (
+                <Button
+                  type="default"
+                  onClick={() => {
+                    // Load current refresh token if available
+                    if (sourceSetting.refreshToken) {
+                      form.setFieldsValue({
+                        refreshToken: sourceSetting.refreshToken,
+                      })
+                    }
+                    setIsOAuthDrawerOpen(true)
+                  }}
+                >
+                  Connect to Salesforce
+                </Button>
+              )}
+            </Space>
+            <div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 Created: {new Date(source.createdAt).toLocaleDateString()} | 
                 Updated: {new Date(source.updatedAt).toLocaleDateString()}
               </Text>
             </div>
-          </div>
-          <Space>
-            <Button
-              type="primary"
-              icon={<SettingOutlined />}
-              onClick={handleOpenSettingModal}
-            >
-              {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
-            </Button>
-            {sourceSetting && (
-              <Button
-                type="default"
-                onClick={() => {
-                  // Load current refresh token if available
-                  if (sourceSetting.refreshToken) {
-                    form.setFieldsValue({
-                      refreshToken: sourceSetting.refreshToken,
-                    })
-                  }
-                  setIsOAuthDrawerOpen(true)
-                }}
-              >
-                Connect to Salesforce
-              </Button>
-            )}
           </Space>
         </div>
       </Card>
 
       {/* Source Details */}
-      <Card style={{ marginBottom: 24 }}>
-        <Title level={4} style={{ marginBottom: 16 }}>
-          Source Information
-        </Title>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div>
-            <Text strong>ID: </Text>
-            <Text>{source.id}</Text>
-          </div>
-          <div>
-            <Text strong>Name: </Text>
-            <Text>{source.name}</Text>
-          </div>
-          <div>
-            <Text strong>Provider: </Text>
-            <Tag color={getProviderColor(source.provider)}>
-              {source.provider.toUpperCase()}
-            </Tag>
-          </div>
-          <div>
-            <Text strong>Environment: </Text>
-            <Tag>{source.environment.toUpperCase()}</Tag>
-          </div>
-          <div>
-            <Text strong>Status: </Text>
-            <Tag color={getStatusColor(source.status)}>
-              {source.status.toUpperCase()}
-            </Tag>
-          </div>
-          {project && (
-            <div>
-              <Text strong>Project: </Text>
-              <Text>{project.name}</Text>
-            </div>
-          )}
-        </Space>
-      </Card>
-
-      {/* Source Settings */}
-      <Card>
-        <Title level={4} style={{ marginBottom: 16 }}>
-          Source Settings
-        </Title>
-        {settingLoading ? (
-          <Spin />
-        ) : sourceSetting ? (
-          <Descriptions bordered column={1}>
-            <Descriptions.Item label="Instance URL">
-              {sourceSetting.instanceUrl}
-            </Descriptions.Item>
-            <Descriptions.Item label="Auth Type">
-              <Tag>{sourceSetting.authType.toUpperCase()}</Tag>
-            </Descriptions.Item>
-            {sourceSetting.clientId && (
-              <Descriptions.Item label="Client ID">
-                {sourceSetting.clientId}
-              </Descriptions.Item>
-            )}
-            <Descriptions.Item label="Callback URL">
-              <Space>
-                <Text code style={{ fontSize: 12 }}>
-                  {getCallbackUrl()}
-                </Text>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
-                  onClick={handleCopyCallbackUrl}
-                >
-                  {isCopied ? 'Copied!' : 'Copy'}
-                </Button>
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Scopes">
-              {sourceSetting.scopes && sourceSetting.scopes.length > 0
-                ? sourceSetting.scopes.join(', ')
-                : 'N/A'}
-            </Descriptions.Item>
-            {sourceSetting.refreshToken && (
-              <Descriptions.Item label="Refresh Token">
-                <Text code style={{ fontSize: 11, wordBreak: 'break-all' }}>
-                  {sourceSetting.refreshToken.substring(0, 50)}...
-                </Text>
-              </Descriptions.Item>
-            )}
-            <Descriptions.Item label="Created At">
-              {new Date(sourceSetting.createdAt).toLocaleString()}
-            </Descriptions.Item>
-            <Descriptions.Item label="Updated At">
-              {new Date(sourceSetting.updatedAt).toLocaleString()}
-            </Descriptions.Item>
-          </Descriptions>
-        ) : (
-          <Empty
-            description="No settings configured. Click 'Configure Settings' to set up."
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        )}
-      </Card>
 
       {/* Source Setting Drawer */}
       <Drawer
@@ -503,8 +479,37 @@ function SourceDetailPage() {
             label="Client Secret"
             name="clientSecret"
             tooltip="Consumer Secret from Salesforce Connected App"
+            extra={
+              sourceSetting?.clientSecret ? (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Secret already saved (masked as: {sourceSetting.clientSecret}). Leave empty to keep existing secret, or enter new secret to update.
+                </Text>
+              ) : null
+            }
           >
-            <Input.Password placeholder="Enter client secret" />
+            <Space.Compact style={{ width: '100%' }}>
+              {sourceSetting?.clientSecret && (
+                <Input
+                  readOnly
+                  value={sourceSetting.clientSecret}
+                  style={{
+                    width: '30%',
+                    fontFamily: 'monospace',
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'default',
+                  }}
+                  disabled
+                />
+              )}
+              <Input.Password
+                style={sourceSetting?.clientSecret ? { width: '70%' } : { width: '100%' }}
+                placeholder={
+                  sourceSetting?.clientSecret
+                    ? "Enter new secret to update, or leave empty to keep existing"
+                    : "Enter client secret"
+                }
+              />
+            </Space.Compact>
           </Form.Item>
 
           {showManualSetup && (

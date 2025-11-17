@@ -1,4 +1,5 @@
 import { JwtAuthModule } from '@app/core/modules/jwt-auth';
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SourceSettingModule } from 'src/modules/source-setting/source-setting.module';
@@ -12,6 +13,7 @@ import { AuthService } from './auth.service';
     JwtAuthModule,
     TypeOrmModule.forFeature([UserEntity]),
     SourceSettingModule,
+    HttpModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, UserRepository],

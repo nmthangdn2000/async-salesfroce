@@ -1,12 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { LoginApiDoc } from 'src/modules/auth/docs/login.doc';
@@ -33,7 +25,7 @@ export class AuthController {
     return this.authService.register(input);
   }
 
-  @Get('oauth/authorize')
+  @Get('oauth/authenticate')
   @ApiOperation({ summary: 'Get OAuth 2.0 authorization URL for Salesforce' })
   @ApiQuery({
     name: 'sourceId',
@@ -41,11 +33,13 @@ export class AuthController {
     description: 'Source ID',
   })
   @ApiResponse({ status: 200, description: 'OAuth authorization URL' })
-  async oauthAuthorize(
+  async oauthAuthenticate(
     @Query('sourceId') sourceId: string,
     @Res() res: Response,
   ) {
-    const authUrl = await this.authService.getOAuthAuthorizationUrl(sourceId);
+    const authUrl = await this.authService.getOAuthAuthenticationUrl(sourceId);
+    console.log(authUrl);
+
     return res.redirect(authUrl);
   }
 
@@ -65,25 +59,53 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OAuth callback result' })
   async oauthCallback(
     @Query('code') code: string,
-    @Query('sourceId') sourceId: string,
+    @Query('state') state: string,
     @Query('error') error: string,
+    @Res() res: Response,
   ) {
+    const sourceId = state;
+
+    const frontendUrl = this.authService.getFrontendUrl();
+
     // Handle OAuth provider errors
     if (error) {
-      throw new BadRequestException(error);
+      const errorUrl = new URL(`${frontendUrl}/oauth/callback`);
+      errorUrl.searchParams.set('success', 'false');
+      errorUrl.searchParams.set('error', error);
+      if (sourceId) {
+        errorUrl.searchParams.set('sourceId', sourceId);
+      }
+      return res.redirect(errorUrl.toString());
     }
 
     // Validate required parameters
     if (!code || !sourceId) {
-      throw new BadRequestException('Missing code or sourceId');
+      const errorUrl = new URL(`${frontendUrl}/oauth/callback`);
+      errorUrl.searchParams.set('success', 'false');
+      errorUrl.searchParams.set('error', 'Missing code or sourceId');
+      if (sourceId) {
+        errorUrl.searchParams.set('sourceId', sourceId);
+      }
+      return res.redirect(errorUrl.toString());
     }
 
-    await this.authService.handleOAuthCallback(code, sourceId);
+    try {
+      await this.authService.handleOAuthCallback(code, sourceId);
 
-    return {
-      success: true,
-      message: 'Successfully connected to Salesforce',
-      sourceId,
-    };
+      // Redirect to frontend with success
+      const successUrl = new URL(`${frontendUrl}/oauth/callback`);
+      successUrl.searchParams.set('success', 'true');
+      successUrl.searchParams.set('sourceId', sourceId);
+      return res.redirect(successUrl.toString());
+    } catch (error: unknown) {
+      // Handle errors and redirect to frontend with error message
+      const errorMessage =
+        error instanceof Error ? error.message : 'OAuth callback failed';
+      const errorUrl = new URL(`${frontendUrl}/oauth/callback`);
+      errorUrl.searchParams.set('success', 'false');
+      errorUrl.searchParams.set('error', errorMessage);
+      errorUrl.searchParams.set('sourceId', sourceId);
+      return res.redirect(errorUrl.toString());
+    }
   }
 }

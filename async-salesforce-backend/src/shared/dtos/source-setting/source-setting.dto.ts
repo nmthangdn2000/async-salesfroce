@@ -22,9 +22,10 @@ export type TGetSourceSettingResponseDto = TBaseModelResponseDto &
     | 'deletedBy'
     | 'source'
     | 'secretsRef'
-    | 'clientSecret'
   > & {
     sourceId: string;
+    // clientSecret is masked (e.g., "ABC**")
+    clientSecret?: string;
   };
 
 export type TGetPaginatedSourceSettingResponseDto =
@@ -32,7 +33,12 @@ export type TGetPaginatedSourceSettingResponseDto =
 
 export type ICreateSourceSettingRequestDto = Pick<
   TSourceSetting,
-  'instanceUrl' | 'authType' | 'scopes' | 'clientId' | 'clientSecret' | 'refreshToken'
+  | 'instanceUrl'
+  | 'authType'
+  | 'scopes'
+  | 'clientId'
+  | 'clientSecret'
+  | 'refreshToken'
 > & {
   sourceId: string;
 };

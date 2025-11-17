@@ -25,6 +25,7 @@ export type TAppConfig = {
   apiDocPath: string;
   port: number;
   backendUrl: string;
+  frontendUrl?: string;
   apiPrefix: string;
   corsOrigins: string[];
   transFormKeys: boolean;

@@ -14,6 +14,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SourcesIdRouteImport } from './routes/sources.$id'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
 
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
@@ -40,11 +41,17 @@ const ProjectsIdRoute = ProjectsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ProjectsRoute,
 } as any)
+const OauthCallbackRoute = OauthCallbackRouteImport.update({
+  id: '/oauth/callback',
+  path: '/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
 }
@@ -60,19 +68,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects' | '/sources' | '/projects/$id' | '/sources/$id'
+  fullPaths:
+    | '/'
+    | '/projects'
+    | '/sources'
+    | '/oauth/callback'
+    | '/projects/$id'
+    | '/sources/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects' | '/sources' | '/projects/$id' | '/sources/$id'
+  to:
+    | '/'
+    | '/projects'
+    | '/sources'
+    | '/oauth/callback'
+    | '/projects/$id'
+    | '/sources/$id'
   id:
     | '__root__'
     | '/'
     | '/projects'
     | '/sources'
+    | '/oauth/callback'
     | '/projects/$id'
     | '/sources/$id'
   fileRoutesById: FileRoutesById
@@ -81,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   SourcesRoute: typeof SourcesRouteWithChildren
+  OauthCallbackRoute: typeof OauthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -120,6 +143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdRouteImport
       parentRoute: typeof ProjectsRoute
     }
+    '/oauth/callback': {
+      id: '/oauth/callback'
+      path: '/oauth/callback'
+      fullPath: '/oauth/callback'
+      preLoaderRoute: typeof OauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   SourcesRoute: SourcesRouteWithChildren,
+  OauthCallbackRoute: OauthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -99,7 +99,7 @@ export class SourceSettingService {
 
   async update(
     id: string,
-    updateData: Partial<CreateSourceSettingRequestDto>,
+    input: Partial<CreateSourceSettingRequestDto>,
   ): Promise<SourceSettingEntity> {
     const sourceSetting = await this.sourceSettingRepository.findOne({
       where: { id },
@@ -109,8 +109,24 @@ export class SourceSettingService {
       throw new CustomHttpException(ERROR_MESSAGES.SourceSettingNotFound);
     }
 
-    Object.assign(sourceSetting, updateData);
-    return this.sourceSettingRepository.save(sourceSetting);
+    // Don't overwrite clientSecret if it's empty string or undefined
+    // Only update if a new value is provided (non-empty string)
+    const { clientSecret, ...restInput } = input;
+    const finalInput: Partial<CreateSourceSettingRequestDto> = {
+      ...restInput,
+    };
+
+    // Only update clientSecret if a new non-empty value is provided
+    if (clientSecret !== undefined && clientSecret !== '') {
+      finalInput.clientSecret = clientSecret;
+    }
+
+    const dataUpdate = this.sourceSettingRepository.create({
+      ...sourceSetting,
+      ...finalInput,
+    });
+
+    return this.sourceSettingRepository.save(dataUpdate);
   }
 
   async remove(id: string): Promise<void> {

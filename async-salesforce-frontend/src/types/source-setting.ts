@@ -11,6 +11,7 @@ export interface SourceSetting {
   authType: AuthType
   scopes?: string[]
   clientId?: string
+  clientSecret?: string // Masked secret (e.g., "ABC**")
   refreshToken?: string
   createdAt: string
   updatedAt: string

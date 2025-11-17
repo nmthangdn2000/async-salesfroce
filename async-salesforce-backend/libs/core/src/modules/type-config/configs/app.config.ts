@@ -52,6 +52,13 @@ class EnvironmentVariables {
   @IsUrl({ require_tld: false }, { message: 'BACKEND_URL must be a valid URL' })
   BACKEND_URL!: string;
 
+  @IsUrl(
+    { require_tld: false },
+    { message: 'FRONTEND_URL must be a valid URL' },
+  )
+  @IsOptional()
+  FRONTEND_URL?: string;
+
   @IsString()
   @IsNotEmpty()
   @Matches(/^\/[a-zA-Z0-9/_-]*$/, {
@@ -93,6 +100,7 @@ export const registerAppConfig = registerAs<TAppConfig>(
       nodeEnv: env.NODE_ENV,
       port: env.PORT,
       backendUrl: env.BACKEND_URL,
+      frontendUrl: env.FRONTEND_URL,
       apiPrefix: env.API_PREFIX,
       corsOrigins: env.CORS_ORIGINS || ['*'],
       transFormKeys: false,

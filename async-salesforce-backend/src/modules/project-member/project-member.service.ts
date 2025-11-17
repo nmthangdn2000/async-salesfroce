@@ -6,7 +6,6 @@ import { CreateProjectMemberRequestDto } from 'src/modules/project-member/dto/re
 import { FilterProjectMemberRequestDto } from 'src/modules/project-member/dto/requests/filter-project-member.dto';
 import { GetPaginatedProjectMemberResponseDto } from 'src/modules/project-member/dto/response/get-all-project-member.dto';
 import { GetOneProjectMemberResponseDto } from 'src/modules/project-member/dto/response/get-one-project-member.dto';
-import { ProjectMemberEntity } from 'src/modules/project-member/entities/project-member.entity';
 
 import { ProjectMemberRepository } from './project-member.repository';
 
@@ -38,7 +37,7 @@ export class ProjectMemberService {
     });
 
     const savedMember = await this.projectMemberRepository.save(projectMember);
-    
+
     // Fetch with relations to return complete data
     const memberWithRelations = await this.projectMemberRepository.findOne({
       where: { id: savedMember.id },
@@ -64,10 +63,10 @@ export class ProjectMemberService {
   async findAll(
     filter: FilterProjectMemberRequestDto,
   ): Promise<GetPaginatedProjectMemberResponseDto> {
-    const query =
-      this.projectMemberRepository.createQueryBuilder('projectMember')
-        .leftJoinAndSelect('projectMember.user', 'user')
-        .leftJoinAndSelect('user.profile', 'profile');
+    const query = this.projectMemberRepository
+      .createQueryBuilder('projectMember')
+      .leftJoinAndSelect('projectMember.user', 'user')
+      .leftJoinAndSelect('user.profile', 'profile');
 
     if (filter.projectId) {
       query.andWhere('projectMember.projectId = :projectId', {

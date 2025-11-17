@@ -1,152 +1,351 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class Migration1763027380571 implements MigrationInterface {
-    name = 'Migration1763027380571'
+  name = 'Migration1763027380571';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE "files" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "user_id" uuid NOT NULL, "name" character varying(255) NOT NULL, "path" character varying(255) NOT NULL, "size" integer NOT NULL, "type" character varying(255) NOT NULL, "url" character varying(255) NOT NULL, CONSTRAINT "PK_6c16b9093a142e0e7613b04a3d9" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "roles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "name" character varying(50) NOT NULL, "description" character varying(255) NOT NULL, CONSTRAINT "PK_c1433d71a4838793a49dcad46ab" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "permissions" ("code" integer NOT NULL, "key" character varying(50) NOT NULL, "name" character varying(100) NOT NULL, "description" character varying(255) NOT NULL, "module" character varying(20) NOT NULL, CONSTRAINT "PK_8dad765629e83229da6feda1c1d" PRIMARY KEY ("code"))`);
-        await queryRunner.query(`CREATE TABLE "profiles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "user_id" uuid NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255), "phone" character varying(255), "avatar" character varying(255), "gender" character varying(255), "dob" date, "bio" character varying(255), "address" character varying(255), CONSTRAINT "REL_9e432b7df0d182f8d292902d1a" UNIQUE ("user_id"), CONSTRAINT "PK_8e520eb4da7dc01d0e190447c8e" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "email" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "status" character varying(20) NOT NULL DEFAULT 'active', CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "sf_fields_catalog" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "object_id" uuid NOT NULL, "api_name" character varying(255) NOT NULL, "label" character varying(255), "sf_type" character varying(100) NOT NULL, "is_required" boolean, "length" integer, "precision" integer, "scale" integer, "is_selected" boolean NOT NULL DEFAULT false, "selected_by" uuid, "selected_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_5d35b40e8375b134e54e5ed7130" UNIQUE ("object_id", "api_name"), CONSTRAINT "PK_6500b230c4165a611f2921ec421" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_sf_fields_selected" ON "sf_fields_catalog" ("object_id", "is_selected") `);
-        await queryRunner.query(`CREATE INDEX "idx_sf_fields_object" ON "sf_fields_catalog" ("object_id") `);
-        await queryRunner.query(`CREATE TABLE "sf_objects_catalog" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "api_name" character varying(255) NOT NULL, "label" character varying(255), "is_selected" boolean NOT NULL DEFAULT false, "selected_by" uuid, "selected_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_d6081999eba9489f2dff9d08dde" UNIQUE ("source_id", "api_name"), CONSTRAINT "PK_4fb28834f553aa521da2dbbc6f7" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_sf_objects_selected" ON "sf_objects_catalog" ("source_id", "is_selected") `);
-        await queryRunner.query(`CREATE INDEX "idx_sf_objects_source" ON "sf_objects_catalog" ("source_id") `);
-        await queryRunner.query(`CREATE TABLE "project_members" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "user_id" uuid NOT NULL, "role" character varying(50) NOT NULL, CONSTRAINT "UQ_b3f491d3a3f986106d281d8eb4b" UNIQUE ("project_id", "user_id"), CONSTRAINT "PK_0b2f46f804be4aea9234c78bcc9" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_project_members_user" ON "project_members" ("user_id") `);
-        await queryRunner.query(`CREATE INDEX "idx_project_members_project" ON "project_members" ("project_id") `);
-        await queryRunner.query(`CREATE TABLE "projects" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "name" character varying(255) NOT NULL, "slug" character varying(255), CONSTRAINT "UQ_96e045ab8b0271e5f5a91eae1ee" UNIQUE ("slug"), CONSTRAINT "PK_6271df0a7aed1d6c0691ce6ac50" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "source_setting" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "instance_url" character varying(500) NOT NULL, "auth_type" character varying(50) NOT NULL DEFAULT 'oauth2', "scopes" text array, "secrets_ref" character varying(255), "client_id" character varying(255), "client_secret" character varying(500), "refresh_token" text, CONSTRAINT "UQ_fa3e07e92c180ce88fb59df6765" UNIQUE ("source_id"), CONSTRAINT "UQ_fa3e07e92c180ce88fb59df6765" UNIQUE ("source_id"), CONSTRAINT "REL_fa3e07e92c180ce88fb59df676" UNIQUE ("source_id"), CONSTRAINT "PK_b9fd3693f2ab3f0ef95e80f7a1a" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_source_setting_source" ON "source_setting" ("source_id") `);
-        await queryRunner.query(`CREATE TABLE "sync_runs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "job_id" uuid NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "finished_at" TIMESTAMP WITH TIME ZONE, "status" character varying(50), "metrics" jsonb, CONSTRAINT "PK_adf13fff41a683b3b991fb90b11" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_runs_status_time" ON "sync_runs" ("status", "started_at") `);
-        await queryRunner.query(`CREATE INDEX "idx_runs_job" ON "sync_runs" ("job_id") `);
-        await queryRunner.query(`CREATE INDEX "idx_runs_job_time" ON "sync_runs" ("job_id", "started_at") `);
-        await queryRunner.query(`CREATE TABLE "sync_jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "target_id" uuid NOT NULL, "type" character varying(100) NOT NULL, "schedule_cron" character varying(100), "status" character varying(50) NOT NULL DEFAULT 'idle', "last_run_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_8586b15058c8811de6286052139" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_jobs_status" ON "sync_jobs" ("status") `);
-        await queryRunner.query(`CREATE INDEX "idx_jobs_source_target" ON "sync_jobs" ("source_id", "target_id") `);
-        await queryRunner.query(`CREATE TABLE "sources" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "provider" character varying(50) NOT NULL, "name" character varying(255) NOT NULL, "environment" character varying(50) NOT NULL DEFAULT 'prod', "status" character varying(50) NOT NULL DEFAULT 'active', CONSTRAINT "PK_85523beafe5a2a6b90b02096443" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_sources_project_env" ON "sources" ("project_id", "environment") `);
-        await queryRunner.query(`CREATE INDEX "idx_sources_project_status" ON "sources" ("project_id", "status") `);
-        await queryRunner.query(`CREATE INDEX "idx_sources_project" ON "sources" ("project_id") `);
-        await queryRunner.query(`CREATE TABLE "field_mappings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "object_mapping_id" uuid NOT NULL, "sf_field_api_name" character varying(255) NOT NULL, "target_column" character varying(255) NOT NULL, "logical_type" character varying(100) NOT NULL, "target_type_override" character varying(100), CONSTRAINT "UQ_87675553c377ec5495ea9f7a562" UNIQUE ("object_mapping_id", "sf_field_api_name"), CONSTRAINT "PK_0a8b5aee97dcbb141f26bfead15" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_fieldmap_objmap" ON "field_mappings" ("object_mapping_id") `);
-        await queryRunner.query(`CREATE TABLE "object_mappings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "object_api_name" character varying(255) NOT NULL, "target_id" uuid NOT NULL, "target_table" character varying(255) NOT NULL, "pk_strategy" character varying(50) NOT NULL DEFAULT 'sf_id', CONSTRAINT "UQ_90ae73210598ea41d0ac5fedc2d" UNIQUE ("source_id", "object_api_name", "target_id"), CONSTRAINT "PK_3dd88ac55bddcfb4e3a7502c0a9" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_objmap_target" ON "object_mappings" ("target_id") `);
-        await queryRunner.query(`CREATE INDEX "idx_objmap_source" ON "object_mappings" ("source_id") `);
-        await queryRunner.query(`CREATE TABLE "target_connections" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "target_id" uuid NOT NULL, "connect_info" jsonb NOT NULL, "secrets_ref" character varying(255) NOT NULL, CONSTRAINT "PK_45a891f1c39387c916534c36ce3" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_target_connections_target" ON "target_connections" ("target_id") `);
-        await queryRunner.query(`CREATE TABLE "targets" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "kind" character varying(50) NOT NULL, "name" character varying(255) NOT NULL, CONSTRAINT "PK_87084f49e9de9dd6a3e83906584" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_targets_project" ON "targets" ("project_id") `);
-        await queryRunner.query(`CREATE TABLE "type_dictionary" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "sf_type" character varying(100) NOT NULL, "logical_type" character varying(100) NOT NULL, "pg_type" character varying(100), "mysql_type" character varying(100), "sqlserver_type" character varying(100), "bigquery_type" character varying(100), "snowflake_type" character varying(100), "clickhouse_type" character varying(100), CONSTRAINT "UQ_9df13846815f06f600ad25b27a1" UNIQUE ("sf_type", "logical_type"), CONSTRAINT "PK_4f9982aeb720dbffbbc0470c995" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "idx_typedict_sf_type" ON "type_dictionary" ("sf_type") `);
-        await queryRunner.query(`CREATE TABLE "role_permissions" ("role_id" uuid NOT NULL, "permission_code" integer NOT NULL, CONSTRAINT "PK_0938f91f02174dc620f8cdfed89" PRIMARY KEY ("role_id", "permission_code"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_178199805b901ccd220ab7740e" ON "role_permissions" ("role_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_aae7df9d481dcdb2dafd1d938c" ON "role_permissions" ("permission_code") `);
-        await queryRunner.query(`CREATE TABLE "user_roles" ("user_id" uuid NOT NULL, "role_id" uuid NOT NULL, CONSTRAINT "PK_23ed6f04fe43066df08379fd034" PRIMARY KEY ("user_id", "role_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_87b8888186ca9769c960e92687" ON "user_roles" ("user_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_b23c65e50a758245a33ee35fda" ON "user_roles" ("role_id") `);
-        await queryRunner.query(`CREATE TABLE "user_permissions" ("user_id" uuid NOT NULL, "permission_code" integer NOT NULL, CONSTRAINT "PK_acc08dcad5c38723c4d2d4cc2e7" PRIMARY KEY ("user_id", "permission_code"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_3495bd31f1862d02931e8e8d2e" ON "user_permissions" ("user_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_f179b39ef6a75586268a92369c" ON "user_permissions" ("permission_code") `);
-        await queryRunner.query(`ALTER TABLE "files" ADD CONSTRAINT "FK_a7435dbb7583938d5e7d1376041" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "profiles" ADD CONSTRAINT "FK_9e432b7df0d182f8d292902d1a2" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sf_fields_catalog" ADD CONSTRAINT "FK_9fb40e60ef6873e76c1c8259d25" FOREIGN KEY ("object_id") REFERENCES "sf_objects_catalog"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sf_objects_catalog" ADD CONSTRAINT "FK_337ac402202a9c7775d10d7f91e" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "project_members" ADD CONSTRAINT "FK_b5729113570c20c7e214cf3f58d" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "project_members" ADD CONSTRAINT "FK_e89aae80e010c2faa72e6a49ce8" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "source_setting" ADD CONSTRAINT "FK_fa3e07e92c180ce88fb59df6765" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sync_runs" ADD CONSTRAINT "FK_58d01c353280c8307eb4183d274" FOREIGN KEY ("job_id") REFERENCES "sync_jobs"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sync_jobs" ADD CONSTRAINT "FK_24cf8819d7ceeeea29143fd3fb3" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sync_jobs" ADD CONSTRAINT "FK_94ea873a2b171c91d924b7a32a5" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "sources" ADD CONSTRAINT "FK_586cceec6abec4b21369e8f3d6b" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "field_mappings" ADD CONSTRAINT "FK_66a38d6c7631e66baea0dfad9c0" FOREIGN KEY ("object_mapping_id") REFERENCES "object_mappings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "object_mappings" ADD CONSTRAINT "FK_c0cb72c5af0525cbf1343769a15" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "object_mappings" ADD CONSTRAINT "FK_84938c0a43375911930d55cbf8b" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "target_connections" ADD CONSTRAINT "FK_f08b401d5c5a9bd75b344bcbe75" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "targets" ADD CONSTRAINT "FK_3da45fee68759c5c2de8f365a8d" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "role_permissions" ADD CONSTRAINT "FK_178199805b901ccd220ab7740ec" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "role_permissions" ADD CONSTRAINT "FK_aae7df9d481dcdb2dafd1d938c1" FOREIGN KEY ("permission_code") REFERENCES "permissions"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "user_roles" ADD CONSTRAINT "FK_87b8888186ca9769c960e926870" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "user_roles" ADD CONSTRAINT "FK_b23c65e50a758245a33ee35fda1" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "user_permissions" ADD CONSTRAINT "FK_3495bd31f1862d02931e8e8d2e8" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "user_permissions" ADD CONSTRAINT "FK_f179b39ef6a75586268a92369c5" FOREIGN KEY ("permission_code") REFERENCES "permissions"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-    }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE "files" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "user_id" uuid NOT NULL, "name" character varying(255) NOT NULL, "path" character varying(255) NOT NULL, "size" integer NOT NULL, "type" character varying(255) NOT NULL, "url" character varying(255) NOT NULL, CONSTRAINT "PK_6c16b9093a142e0e7613b04a3d9" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "roles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "name" character varying(50) NOT NULL, "description" character varying(255) NOT NULL, CONSTRAINT "PK_c1433d71a4838793a49dcad46ab" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "permissions" ("code" integer NOT NULL, "key" character varying(50) NOT NULL, "name" character varying(100) NOT NULL, "description" character varying(255) NOT NULL, "module" character varying(20) NOT NULL, CONSTRAINT "PK_8dad765629e83229da6feda1c1d" PRIMARY KEY ("code"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "profiles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "user_id" uuid NOT NULL, "first_name" character varying(255) NOT NULL, "last_name" character varying(255), "phone" character varying(255), "avatar" character varying(255), "gender" character varying(255), "dob" date, "bio" character varying(255), "address" character varying(255), CONSTRAINT "REL_9e432b7df0d182f8d292902d1a" UNIQUE ("user_id"), CONSTRAINT "PK_8e520eb4da7dc01d0e190447c8e" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "email" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "status" character varying(20) NOT NULL DEFAULT 'active', CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "sf_fields_catalog" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "object_id" uuid NOT NULL, "api_name" character varying(255) NOT NULL, "label" character varying(255), "sf_type" character varying(100) NOT NULL, "is_required" boolean, "length" integer, "precision" integer, "scale" integer, "is_selected" boolean NOT NULL DEFAULT false, "selected_by" uuid, "selected_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_5d35b40e8375b134e54e5ed7130" UNIQUE ("object_id", "api_name"), CONSTRAINT "PK_6500b230c4165a611f2921ec421" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sf_fields_selected" ON "sf_fields_catalog" ("object_id", "is_selected") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sf_fields_object" ON "sf_fields_catalog" ("object_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "sf_objects_catalog" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "api_name" character varying(255) NOT NULL, "label" character varying(255), "is_selected" boolean NOT NULL DEFAULT false, "selected_by" uuid, "selected_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_d6081999eba9489f2dff9d08dde" UNIQUE ("source_id", "api_name"), CONSTRAINT "PK_4fb28834f553aa521da2dbbc6f7" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sf_objects_selected" ON "sf_objects_catalog" ("source_id", "is_selected") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sf_objects_source" ON "sf_objects_catalog" ("source_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "project_members" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "user_id" uuid NOT NULL, "role" character varying(50) NOT NULL, CONSTRAINT "UQ_b3f491d3a3f986106d281d8eb4b" UNIQUE ("project_id", "user_id"), CONSTRAINT "PK_0b2f46f804be4aea9234c78bcc9" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_project_members_user" ON "project_members" ("user_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_project_members_project" ON "project_members" ("project_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "projects" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "name" character varying(255) NOT NULL, "slug" character varying(255), CONSTRAINT "UQ_96e045ab8b0271e5f5a91eae1ee" UNIQUE ("slug"), CONSTRAINT "PK_6271df0a7aed1d6c0691ce6ac50" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "source_setting" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "instance_url" character varying(500) NOT NULL, "auth_type" character varying(50) NOT NULL DEFAULT 'oauth2', "scopes" text array, "secrets_ref" character varying(255), "client_id" character varying(255), "client_secret" character varying(500), "refresh_token" text, CONSTRAINT "UQ_fa3e07e92c180ce88fb59df6765" UNIQUE ("source_id"), CONSTRAINT "UQ_fa3e07e92c180ce88fb59df6765" UNIQUE ("source_id"), CONSTRAINT "REL_fa3e07e92c180ce88fb59df676" UNIQUE ("source_id"), CONSTRAINT "PK_b9fd3693f2ab3f0ef95e80f7a1a" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_source_setting_source" ON "source_setting" ("source_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "sync_runs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "job_id" uuid NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "finished_at" TIMESTAMP WITH TIME ZONE, "status" character varying(50), "metrics" jsonb, CONSTRAINT "PK_adf13fff41a683b3b991fb90b11" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_runs_status_time" ON "sync_runs" ("status", "started_at") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_runs_job" ON "sync_runs" ("job_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_runs_job_time" ON "sync_runs" ("job_id", "started_at") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "sync_jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "target_id" uuid NOT NULL, "type" character varying(100) NOT NULL, "schedule_cron" character varying(100), "status" character varying(50) NOT NULL DEFAULT 'idle', "last_run_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_8586b15058c8811de6286052139" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_jobs_status" ON "sync_jobs" ("status") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_jobs_source_target" ON "sync_jobs" ("source_id", "target_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "sources" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "provider" character varying(50) NOT NULL, "name" character varying(255) NOT NULL, "environment" character varying(50) NOT NULL DEFAULT 'prod', "status" character varying(50) NOT NULL DEFAULT 'active', CONSTRAINT "PK_85523beafe5a2a6b90b02096443" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sources_project_env" ON "sources" ("project_id", "environment") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sources_project_status" ON "sources" ("project_id", "status") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_sources_project" ON "sources" ("project_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "field_mappings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "object_mapping_id" uuid NOT NULL, "sf_field_api_name" character varying(255) NOT NULL, "target_column" character varying(255) NOT NULL, "logical_type" character varying(100) NOT NULL, "target_type_override" character varying(100), CONSTRAINT "UQ_87675553c377ec5495ea9f7a562" UNIQUE ("object_mapping_id", "sf_field_api_name"), CONSTRAINT "PK_0a8b5aee97dcbb141f26bfead15" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_fieldmap_objmap" ON "field_mappings" ("object_mapping_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "object_mappings" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "source_id" uuid NOT NULL, "object_api_name" character varying(255) NOT NULL, "target_id" uuid NOT NULL, "target_table" character varying(255) NOT NULL, "pk_strategy" character varying(50) NOT NULL DEFAULT 'sf_id', CONSTRAINT "UQ_90ae73210598ea41d0ac5fedc2d" UNIQUE ("source_id", "object_api_name", "target_id"), CONSTRAINT "PK_3dd88ac55bddcfb4e3a7502c0a9" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_objmap_target" ON "object_mappings" ("target_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_objmap_source" ON "object_mappings" ("source_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "target_connections" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "target_id" uuid NOT NULL, "connect_info" jsonb NOT NULL, "secrets_ref" character varying(255) NOT NULL, CONSTRAINT "PK_45a891f1c39387c916534c36ce3" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_target_connections_target" ON "target_connections" ("target_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "targets" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "project_id" uuid NOT NULL, "kind" character varying(50) NOT NULL, "name" character varying(255) NOT NULL, CONSTRAINT "PK_87084f49e9de9dd6a3e83906584" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_targets_project" ON "targets" ("project_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "type_dictionary" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "created_by" uuid, "updated_by" uuid, "deleted_at" TIMESTAMP, "deleted_by" uuid, "sf_type" character varying(100) NOT NULL, "logical_type" character varying(100) NOT NULL, "pg_type" character varying(100), "mysql_type" character varying(100), "sqlserver_type" character varying(100), "bigquery_type" character varying(100), "snowflake_type" character varying(100), "clickhouse_type" character varying(100), CONSTRAINT "UQ_9df13846815f06f600ad25b27a1" UNIQUE ("sf_type", "logical_type"), CONSTRAINT "PK_4f9982aeb720dbffbbc0470c995" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_typedict_sf_type" ON "type_dictionary" ("sf_type") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "role_permissions" ("role_id" uuid NOT NULL, "permission_code" integer NOT NULL, CONSTRAINT "PK_0938f91f02174dc620f8cdfed89" PRIMARY KEY ("role_id", "permission_code"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_178199805b901ccd220ab7740e" ON "role_permissions" ("role_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_aae7df9d481dcdb2dafd1d938c" ON "role_permissions" ("permission_code") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "user_roles" ("user_id" uuid NOT NULL, "role_id" uuid NOT NULL, CONSTRAINT "PK_23ed6f04fe43066df08379fd034" PRIMARY KEY ("user_id", "role_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_87b8888186ca9769c960e92687" ON "user_roles" ("user_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_b23c65e50a758245a33ee35fda" ON "user_roles" ("role_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "user_permissions" ("user_id" uuid NOT NULL, "permission_code" integer NOT NULL, CONSTRAINT "PK_acc08dcad5c38723c4d2d4cc2e7" PRIMARY KEY ("user_id", "permission_code"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_3495bd31f1862d02931e8e8d2e" ON "user_permissions" ("user_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_f179b39ef6a75586268a92369c" ON "user_permissions" ("permission_code") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "files" ADD CONSTRAINT "FK_a7435dbb7583938d5e7d1376041" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "profiles" ADD CONSTRAINT "FK_9e432b7df0d182f8d292902d1a2" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sf_fields_catalog" ADD CONSTRAINT "FK_9fb40e60ef6873e76c1c8259d25" FOREIGN KEY ("object_id") REFERENCES "sf_objects_catalog"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sf_objects_catalog" ADD CONSTRAINT "FK_337ac402202a9c7775d10d7f91e" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "project_members" ADD CONSTRAINT "FK_b5729113570c20c7e214cf3f58d" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "project_members" ADD CONSTRAINT "FK_e89aae80e010c2faa72e6a49ce8" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "source_setting" ADD CONSTRAINT "FK_fa3e07e92c180ce88fb59df6765" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_runs" ADD CONSTRAINT "FK_58d01c353280c8307eb4183d274" FOREIGN KEY ("job_id") REFERENCES "sync_jobs"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_jobs" ADD CONSTRAINT "FK_24cf8819d7ceeeea29143fd3fb3" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_jobs" ADD CONSTRAINT "FK_94ea873a2b171c91d924b7a32a5" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sources" ADD CONSTRAINT "FK_586cceec6abec4b21369e8f3d6b" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "field_mappings" ADD CONSTRAINT "FK_66a38d6c7631e66baea0dfad9c0" FOREIGN KEY ("object_mapping_id") REFERENCES "object_mappings"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "object_mappings" ADD CONSTRAINT "FK_c0cb72c5af0525cbf1343769a15" FOREIGN KEY ("source_id") REFERENCES "sources"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "object_mappings" ADD CONSTRAINT "FK_84938c0a43375911930d55cbf8b" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "target_connections" ADD CONSTRAINT "FK_f08b401d5c5a9bd75b344bcbe75" FOREIGN KEY ("target_id") REFERENCES "targets"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "targets" ADD CONSTRAINT "FK_3da45fee68759c5c2de8f365a8d" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "role_permissions" ADD CONSTRAINT "FK_178199805b901ccd220ab7740ec" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "role_permissions" ADD CONSTRAINT "FK_aae7df9d481dcdb2dafd1d938c1" FOREIGN KEY ("permission_code") REFERENCES "permissions"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_roles" ADD CONSTRAINT "FK_87b8888186ca9769c960e926870" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_roles" ADD CONSTRAINT "FK_b23c65e50a758245a33ee35fda1" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_permissions" ADD CONSTRAINT "FK_3495bd31f1862d02931e8e8d2e8" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_permissions" ADD CONSTRAINT "FK_f179b39ef6a75586268a92369c5" FOREIGN KEY ("permission_code") REFERENCES "permissions"("code") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "user_permissions" DROP CONSTRAINT "FK_f179b39ef6a75586268a92369c5"`);
-        await queryRunner.query(`ALTER TABLE "user_permissions" DROP CONSTRAINT "FK_3495bd31f1862d02931e8e8d2e8"`);
-        await queryRunner.query(`ALTER TABLE "user_roles" DROP CONSTRAINT "FK_b23c65e50a758245a33ee35fda1"`);
-        await queryRunner.query(`ALTER TABLE "user_roles" DROP CONSTRAINT "FK_87b8888186ca9769c960e926870"`);
-        await queryRunner.query(`ALTER TABLE "role_permissions" DROP CONSTRAINT "FK_aae7df9d481dcdb2dafd1d938c1"`);
-        await queryRunner.query(`ALTER TABLE "role_permissions" DROP CONSTRAINT "FK_178199805b901ccd220ab7740ec"`);
-        await queryRunner.query(`ALTER TABLE "targets" DROP CONSTRAINT "FK_3da45fee68759c5c2de8f365a8d"`);
-        await queryRunner.query(`ALTER TABLE "target_connections" DROP CONSTRAINT "FK_f08b401d5c5a9bd75b344bcbe75"`);
-        await queryRunner.query(`ALTER TABLE "object_mappings" DROP CONSTRAINT "FK_84938c0a43375911930d55cbf8b"`);
-        await queryRunner.query(`ALTER TABLE "object_mappings" DROP CONSTRAINT "FK_c0cb72c5af0525cbf1343769a15"`);
-        await queryRunner.query(`ALTER TABLE "field_mappings" DROP CONSTRAINT "FK_66a38d6c7631e66baea0dfad9c0"`);
-        await queryRunner.query(`ALTER TABLE "sources" DROP CONSTRAINT "FK_586cceec6abec4b21369e8f3d6b"`);
-        await queryRunner.query(`ALTER TABLE "sync_jobs" DROP CONSTRAINT "FK_94ea873a2b171c91d924b7a32a5"`);
-        await queryRunner.query(`ALTER TABLE "sync_jobs" DROP CONSTRAINT "FK_24cf8819d7ceeeea29143fd3fb3"`);
-        await queryRunner.query(`ALTER TABLE "sync_runs" DROP CONSTRAINT "FK_58d01c353280c8307eb4183d274"`);
-        await queryRunner.query(`ALTER TABLE "source_setting" DROP CONSTRAINT "FK_fa3e07e92c180ce88fb59df6765"`);
-        await queryRunner.query(`ALTER TABLE "project_members" DROP CONSTRAINT "FK_e89aae80e010c2faa72e6a49ce8"`);
-        await queryRunner.query(`ALTER TABLE "project_members" DROP CONSTRAINT "FK_b5729113570c20c7e214cf3f58d"`);
-        await queryRunner.query(`ALTER TABLE "sf_objects_catalog" DROP CONSTRAINT "FK_337ac402202a9c7775d10d7f91e"`);
-        await queryRunner.query(`ALTER TABLE "sf_fields_catalog" DROP CONSTRAINT "FK_9fb40e60ef6873e76c1c8259d25"`);
-        await queryRunner.query(`ALTER TABLE "profiles" DROP CONSTRAINT "FK_9e432b7df0d182f8d292902d1a2"`);
-        await queryRunner.query(`ALTER TABLE "files" DROP CONSTRAINT "FK_a7435dbb7583938d5e7d1376041"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_f179b39ef6a75586268a92369c"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_3495bd31f1862d02931e8e8d2e"`);
-        await queryRunner.query(`DROP TABLE "user_permissions"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b23c65e50a758245a33ee35fda"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_87b8888186ca9769c960e92687"`);
-        await queryRunner.query(`DROP TABLE "user_roles"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_aae7df9d481dcdb2dafd1d938c"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_178199805b901ccd220ab7740e"`);
-        await queryRunner.query(`DROP TABLE "role_permissions"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_typedict_sf_type"`);
-        await queryRunner.query(`DROP TABLE "type_dictionary"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_targets_project"`);
-        await queryRunner.query(`DROP TABLE "targets"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_target_connections_target"`);
-        await queryRunner.query(`DROP TABLE "target_connections"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_objmap_source"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_objmap_target"`);
-        await queryRunner.query(`DROP TABLE "object_mappings"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_fieldmap_objmap"`);
-        await queryRunner.query(`DROP TABLE "field_mappings"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sources_project"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sources_project_status"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sources_project_env"`);
-        await queryRunner.query(`DROP TABLE "sources"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_jobs_source_target"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_jobs_status"`);
-        await queryRunner.query(`DROP TABLE "sync_jobs"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_runs_job_time"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_runs_job"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_runs_status_time"`);
-        await queryRunner.query(`DROP TABLE "sync_runs"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_source_setting_source"`);
-        await queryRunner.query(`DROP TABLE "source_setting"`);
-        await queryRunner.query(`DROP TABLE "projects"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_project_members_project"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_project_members_user"`);
-        await queryRunner.query(`DROP TABLE "project_members"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sf_objects_source"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sf_objects_selected"`);
-        await queryRunner.query(`DROP TABLE "sf_objects_catalog"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sf_fields_object"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sf_fields_selected"`);
-        await queryRunner.query(`DROP TABLE "sf_fields_catalog"`);
-        await queryRunner.query(`DROP TABLE "users"`);
-        await queryRunner.query(`DROP TABLE "profiles"`);
-        await queryRunner.query(`DROP TABLE "permissions"`);
-        await queryRunner.query(`DROP TABLE "roles"`);
-        await queryRunner.query(`DROP TABLE "files"`);
-    }
-
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "user_permissions" DROP CONSTRAINT "FK_f179b39ef6a75586268a92369c5"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_permissions" DROP CONSTRAINT "FK_3495bd31f1862d02931e8e8d2e8"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_roles" DROP CONSTRAINT "FK_b23c65e50a758245a33ee35fda1"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user_roles" DROP CONSTRAINT "FK_87b8888186ca9769c960e926870"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "role_permissions" DROP CONSTRAINT "FK_aae7df9d481dcdb2dafd1d938c1"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "role_permissions" DROP CONSTRAINT "FK_178199805b901ccd220ab7740ec"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "targets" DROP CONSTRAINT "FK_3da45fee68759c5c2de8f365a8d"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "target_connections" DROP CONSTRAINT "FK_f08b401d5c5a9bd75b344bcbe75"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "object_mappings" DROP CONSTRAINT "FK_84938c0a43375911930d55cbf8b"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "object_mappings" DROP CONSTRAINT "FK_c0cb72c5af0525cbf1343769a15"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "field_mappings" DROP CONSTRAINT "FK_66a38d6c7631e66baea0dfad9c0"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sources" DROP CONSTRAINT "FK_586cceec6abec4b21369e8f3d6b"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_jobs" DROP CONSTRAINT "FK_94ea873a2b171c91d924b7a32a5"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_jobs" DROP CONSTRAINT "FK_24cf8819d7ceeeea29143fd3fb3"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sync_runs" DROP CONSTRAINT "FK_58d01c353280c8307eb4183d274"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "source_setting" DROP CONSTRAINT "FK_fa3e07e92c180ce88fb59df6765"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "project_members" DROP CONSTRAINT "FK_e89aae80e010c2faa72e6a49ce8"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "project_members" DROP CONSTRAINT "FK_b5729113570c20c7e214cf3f58d"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sf_objects_catalog" DROP CONSTRAINT "FK_337ac402202a9c7775d10d7f91e"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "sf_fields_catalog" DROP CONSTRAINT "FK_9fb40e60ef6873e76c1c8259d25"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "profiles" DROP CONSTRAINT "FK_9e432b7df0d182f8d292902d1a2"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "files" DROP CONSTRAINT "FK_a7435dbb7583938d5e7d1376041"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_f179b39ef6a75586268a92369c"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_3495bd31f1862d02931e8e8d2e"`,
+    );
+    await queryRunner.query(`DROP TABLE "user_permissions"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_b23c65e50a758245a33ee35fda"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_87b8888186ca9769c960e92687"`,
+    );
+    await queryRunner.query(`DROP TABLE "user_roles"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_aae7df9d481dcdb2dafd1d938c"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_178199805b901ccd220ab7740e"`,
+    );
+    await queryRunner.query(`DROP TABLE "role_permissions"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_typedict_sf_type"`);
+    await queryRunner.query(`DROP TABLE "type_dictionary"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_targets_project"`);
+    await queryRunner.query(`DROP TABLE "targets"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."idx_target_connections_target"`,
+    );
+    await queryRunner.query(`DROP TABLE "target_connections"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_objmap_source"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_objmap_target"`);
+    await queryRunner.query(`DROP TABLE "object_mappings"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_fieldmap_objmap"`);
+    await queryRunner.query(`DROP TABLE "field_mappings"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sources_project"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sources_project_status"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sources_project_env"`);
+    await queryRunner.query(`DROP TABLE "sources"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_jobs_source_target"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_jobs_status"`);
+    await queryRunner.query(`DROP TABLE "sync_jobs"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_runs_job_time"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_runs_job"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_runs_status_time"`);
+    await queryRunner.query(`DROP TABLE "sync_runs"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_source_setting_source"`);
+    await queryRunner.query(`DROP TABLE "source_setting"`);
+    await queryRunner.query(`DROP TABLE "projects"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."idx_project_members_project"`,
+    );
+    await queryRunner.query(`DROP INDEX "public"."idx_project_members_user"`);
+    await queryRunner.query(`DROP TABLE "project_members"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sf_objects_source"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sf_objects_selected"`);
+    await queryRunner.query(`DROP TABLE "sf_objects_catalog"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sf_fields_object"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_sf_fields_selected"`);
+    await queryRunner.query(`DROP TABLE "sf_fields_catalog"`);
+    await queryRunner.query(`DROP TABLE "users"`);
+    await queryRunner.query(`DROP TABLE "profiles"`);
+    await queryRunner.query(`DROP TABLE "permissions"`);
+    await queryRunner.query(`DROP TABLE "roles"`);
+    await queryRunner.query(`DROP TABLE "files"`);
+  }
 }

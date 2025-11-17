@@ -21,6 +21,9 @@ function RootComponent() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   
+  // Check if current route is OAuth callback - hide sidebar and header
+  const isOAuthCallback = location.pathname === '/oauth/callback'
+  
   // Xác định menu item đang active dựa trên pathname
   const selectedKey = useMemo(() => {
     const pathname = location.pathname
@@ -31,6 +34,17 @@ function RootComponent() {
   }, [location.pathname])
 
   const siderWidth = collapsed ? 80 : 250
+
+  // Full screen layout for OAuth callback
+  if (isOAuthCallback) {
+    return (
+      <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+        <Content style={{ padding: 0, background: '#f0f2f5' }}>
+          <Outlet />
+        </Content>
+      </Layout>
+    )
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
