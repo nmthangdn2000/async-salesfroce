@@ -14,6 +14,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { BulkUpdateFieldsSelectedRequestDto } from './dto/requests/bulk-update-fields-selected.dto';
 import { FilterSfFieldsCatalogRequestDto } from './dto/requests/filter-sf-fields-catalog.dto';
 import { FilterSfObjectsCatalogRequestDto } from './dto/requests/filter-sf-objects-catalog.dto';
 import { GetPaginatedSfFieldsCatalogResponseDto } from './dto/response/get-all-sf-fields-catalog.dto';
@@ -190,5 +191,30 @@ export class CatalogController {
     @Body() body: { isSelected: boolean },
   ) {
     return this.catalogService.toggleFieldSelected(fieldId, body.isSelected);
+  }
+
+  @Patch('fields/bulk-update-selected')
+  @ApiOperation({
+    summary: 'Bulk update selected status for multiple fields',
+    description: 'Update the selected status of multiple catalog fields at once. Required fields cannot be deselected.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Fields selected status updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        updatedCount: { type: 'number' },
+        skippedCount: { type: 'number' },
+      },
+    },
+  })
+  async bulkUpdateFieldsSelected(
+    @Body() body: BulkUpdateFieldsSelectedRequestDto,
+  ) {
+    return this.catalogService.bulkUpdateFieldsSelected(
+      body.fieldIds,
+      body.isSelected,
+    );
   }
 }

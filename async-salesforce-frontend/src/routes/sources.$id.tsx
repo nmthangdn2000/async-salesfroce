@@ -49,6 +49,7 @@ function SourceDetailPage() {
   const [objectFilterSelected, setObjectFilterSelected] = useState<boolean | undefined>(undefined)
   const [fieldSearch, setFieldSearch] = useState<string>('')
   const [fieldFilterSelected, setFieldFilterSelected] = useState<boolean | undefined>(undefined)
+  const [fieldChanges, setFieldChanges] = useState<Record<string, boolean>>({})
   const queryClient = useQueryClient()
 
   // Fetch source details
@@ -188,7 +189,7 @@ function SourceDetailPage() {
     },
   })
 
-  // Toggle field selected mutation
+  // Toggle field selected mutation (for individual field)
   const toggleFieldSelectedMutation = useMutation({
     mutationFn: async ({ fieldId, isSelected }: { fieldId: string; isSelected: boolean }) => {
       return catalogApi.toggleFieldSelected(fieldId, isSelected)
@@ -202,6 +203,58 @@ function SourceDetailPage() {
       message.error(error.message || 'Failed to update field selection')
     },
   })
+
+  // Save all field changes mutation
+  const saveFieldChangesMutation = useMutation({
+    mutationFn: async (changes: Record<string, boolean>) => {
+      // Group changes by isSelected value
+      const selectFields: string[] = []
+      const deselectFields: string[] = []
+
+      Object.entries(changes).forEach(([fieldId, isSelected]) => {
+        if (isSelected) {
+          selectFields.push(fieldId)
+        } else {
+          deselectFields.push(fieldId)
+        }
+      })
+
+      // Execute bulk updates
+      const promises: Promise<{ updatedCount: number; skippedCount: number }>[] = []
+      
+      if (selectFields.length > 0) {
+        promises.push(catalogApi.bulkUpdateFieldsSelected(selectFields, true))
+      }
+      if (deselectFields.length > 0) {
+        promises.push(catalogApi.bulkUpdateFieldsSelected(deselectFields, false))
+      }
+
+      const results = await Promise.all(promises)
+      const totalUpdated = results.reduce((sum, r) => sum + r.updatedCount, 0)
+      const totalSkipped = results.reduce((sum, r) => sum + r.skippedCount, 0)
+      
+      return { updatedCount: totalUpdated, skippedCount: totalSkipped }
+    },
+    onSuccess: (data) => {
+      if (selectedObjectId) {
+        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
+        setFieldChanges({})
+        if (data.skippedCount > 0) {
+          message.success(`Saved ${data.updatedCount} fields. ${data.skippedCount} required fields were skipped.`)
+        } else {
+          message.success(`Successfully saved ${data.updatedCount} field selections`)
+        }
+      }
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to save field selections')
+    },
+  })
+
+  // Reset field changes when object changes
+  useEffect(() => {
+    setFieldChanges({})
+  }, [selectedObjectId])
 
   // Listen for OAuth callback messages from popup window
   useEffect(() => {
@@ -670,14 +723,14 @@ function SourceDetailPage() {
                         size="small"
                         onClick={() => {
                           if (fieldsData?.items) {
+                            const newChanges = { ...fieldChanges }
                             fieldsData.items.forEach((field) => {
-                              if (!field.isSelected) {
-                                toggleFieldSelectedMutation.mutate({
-                                  fieldId: field.id,
-                                  isSelected: true,
-                                })
+                              const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
+                              if (!currentState) {
+                                newChanges[field.id] = true
                               }
                             })
+                            setFieldChanges(newChanges)
                           }
                         }}
                         disabled={!fieldsData?.items || fieldsData.items.length === 0}
@@ -688,21 +741,45 @@ function SourceDetailPage() {
                         size="small"
                         onClick={() => {
                           if (fieldsData?.items) {
+                            const newChanges = { ...fieldChanges }
                             fieldsData.items.forEach((field) => {
                               // Skip required fields when deselecting
-                              if (field.isSelected && !field.isRequired) {
-                                toggleFieldSelectedMutation.mutate({
-                                  fieldId: field.id,
-                                  isSelected: false,
-                                })
+                              if (!field.isRequired) {
+                                const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
+                                if (currentState) {
+                                  newChanges[field.id] = false
+                                }
                               }
                             })
+                            setFieldChanges(newChanges)
                           }
                         }}
                         disabled={!fieldsData?.items || fieldsData.items.length === 0}
                       >
                         Deselect All
                       </Button>
+                      {Object.keys(fieldChanges).length > 0 && (
+                        <>
+                          <Button
+                            size="small"
+                            type="primary"
+                            onClick={() => {
+                              saveFieldChangesMutation.mutate(fieldChanges)
+                            }}
+                            loading={saveFieldChangesMutation.isPending}
+                          >
+                            Save Changes
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setFieldChanges({})
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
                     </Space>
                   </div>
                   {fieldsLoading ? (
@@ -722,29 +799,32 @@ function SourceDetailPage() {
                   ) : fieldsData && fieldsData.items.length > 0 ? (
                     <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
                       <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                        {fieldsData.items.map((field) => (
-                          <Card
-                            key={field.id}
-                            size="small"
-                            style={{
-                              border: field.isSelected ? '1px solid #52c41a' : '1px solid #d9d9d9',
-                              backgroundColor: field.isSelected ? '#f6ffed' : '#fff',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                  <Switch
-                                    checked={field.isSelected}
-                                    size="small"
-                                    disabled={field.isRequired}
-                                    onChange={(checked) => {
-                                      toggleFieldSelectedMutation.mutate({
-                                        fieldId: field.id,
-                                        isSelected: checked,
-                                      })
-                                    }}
-                                  />
+                        {fieldsData.items.map((field) => {
+                          const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
+                          return (
+                            <Card
+                              key={field.id}
+                              size="small"
+                              style={{
+                                border: currentState ? '1px solid #52c41a' : '1px solid #d9d9d9',
+                                backgroundColor: currentState ? '#f6ffed' : '#fff',
+                                ...(fieldChanges[field.id] !== undefined ? { border: '1px solid #1890ff', backgroundColor: '#e6f7ff' } : {}),
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <Switch
+                                      checked={currentState}
+                                      size="small"
+                                      disabled={field.isRequired}
+                                      onChange={(checked) => {
+                                        setFieldChanges((prev) => ({
+                                          ...prev,
+                                          [field.id]: checked,
+                                        }))
+                                      }}
+                                    />
                                   <Space>
                                     <Text strong>{field.label || field.apiName}</Text>
                                     {field.isRequired && (
@@ -762,7 +842,8 @@ function SourceDetailPage() {
                               </div>
                             </div>
                           </Card>
-                        ))}
+                          )
+                        })}
                       </Space>
                     </div>
                   ) : (

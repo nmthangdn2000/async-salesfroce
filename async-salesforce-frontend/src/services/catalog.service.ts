@@ -156,5 +156,21 @@ export const catalogApi = {
       body: { isSelected },
     })
   },
+
+  /**
+   * Bulk update selected status for multiple fields
+   */
+  bulkUpdateFieldsSelected: async (
+    fieldIds: string[],
+    isSelected: boolean,
+  ): Promise<{ updatedCount: number; skippedCount: number }> => {
+    return request<{ updatedCount: number; skippedCount: number }>(
+      '/catalog/fields/bulk-update-selected',
+      {
+        method: 'PATCH',
+        body: { fieldIds, isSelected },
+      },
+    )
+  },
 }
 

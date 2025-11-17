@@ -3,6 +3,7 @@ import { SalesforceService } from '@app/helper/modules/salesforce';
 import { ERROR_MESSAGES } from '@app/shared/constants/error.constant';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { In } from 'typeorm';
 
 import { SourceSettingService } from '../source-setting/source-setting.service';
 import { SfObjectsCatalogRepository } from './catalog.repository';
@@ -422,5 +423,54 @@ export class CatalogService {
     }
 
     return this.sfFieldsCatalogRepository.save(field);
+  }
+
+  /**
+   * Bulk update selected status for multiple fields
+   * When deselecting, required fields are skipped
+   */
+  async bulkUpdateFieldsSelected(
+    fieldIds: string[],
+    isSelected: boolean,
+    userId?: string,
+  ): Promise<{ updatedCount: number; skippedCount: number }> {
+    if (fieldIds.length === 0) {
+      return { updatedCount: 0, skippedCount: 0 };
+    }
+
+    // Get all fields
+    const fields = await this.sfFieldsCatalogRepository.find({
+      where: { id: In(fieldIds) },
+    });
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (const field of fields) {
+      // Skip required fields when deselecting
+      if (!isSelected && field.isRequired) {
+        skippedCount++;
+        continue;
+      }
+
+      // Skip if already in desired state
+      if (field.isSelected === isSelected) {
+        continue;
+      }
+
+      field.isSelected = isSelected;
+      if (isSelected) {
+        field.selectedBy = userId;
+        field.selectedAt = new Date();
+      } else {
+        field.selectedBy = undefined;
+        field.selectedAt = undefined;
+      }
+
+      await this.sfFieldsCatalogRepository.save(field);
+      updatedCount++;
+    }
+
+    return { updatedCount, skippedCount };
   }
 }
