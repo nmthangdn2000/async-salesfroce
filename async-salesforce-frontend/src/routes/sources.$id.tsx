@@ -638,32 +638,73 @@ function SourceDetailPage() {
                     )}
                   </div>
                   {/* Search and Filter for Fields */}
-                  <Space style={{ width: '100%', marginBottom: 16 }} size={8}>
-                    <Input
-                      placeholder="Search fields..."
-                      prefix={<SearchOutlined />}
-                      value={fieldSearch}
-                      onChange={(e) => setFieldSearch(e.target.value)}
-                      allowClear
-                      style={{ flex: 1 }}
-                    />
-                    <Select
-                      placeholder="Filter by selection"
-                      value={fieldFilterSelected === undefined ? 'all' : fieldFilterSelected ? 'selected' : 'unselected'}
-                      onChange={(value) => {
-                        if (value === 'all') {
-                          setFieldFilterSelected(undefined)
-                        } else {
-                          setFieldFilterSelected(value === 'selected')
-                        }
-                      }}
-                      style={{ width: 150 }}
-                    >
-                      <Select.Option value="all">All Fields</Select.Option>
-                      <Select.Option value="selected">Selected Only</Select.Option>
-                      <Select.Option value="unselected">Unselected Only</Select.Option>
-                    </Select>
-                  </Space>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+                    <Space style={{ flex: 1 }} size={8}>
+                      <Input
+                        placeholder="Search fields..."
+                        prefix={<SearchOutlined />}
+                        value={fieldSearch}
+                        onChange={(e) => setFieldSearch(e.target.value)}
+                        allowClear
+                        style={{ flex: 1 }}
+                      />
+                      <Select
+                        placeholder="Filter by selection"
+                        value={fieldFilterSelected === undefined ? 'all' : fieldFilterSelected ? 'selected' : 'unselected'}
+                        onChange={(value) => {
+                          if (value === 'all') {
+                            setFieldFilterSelected(undefined)
+                          } else {
+                            setFieldFilterSelected(value === 'selected')
+                          }
+                        }}
+                        style={{ width: 150 }}
+                      >
+                        <Select.Option value="all">All Fields</Select.Option>
+                        <Select.Option value="selected">Selected Only</Select.Option>
+                        <Select.Option value="unselected">Unselected Only</Select.Option>
+                      </Select>
+                    </Space>
+                    <Space size={8}>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          if (fieldsData?.items) {
+                            fieldsData.items.forEach((field) => {
+                              if (!field.isSelected) {
+                                toggleFieldSelectedMutation.mutate({
+                                  fieldId: field.id,
+                                  isSelected: true,
+                                })
+                              }
+                            })
+                          }
+                        }}
+                        disabled={!fieldsData?.items || fieldsData.items.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          if (fieldsData?.items) {
+                            fieldsData.items.forEach((field) => {
+                              // Skip required fields when deselecting
+                              if (field.isSelected && !field.isRequired) {
+                                toggleFieldSelectedMutation.mutate({
+                                  fieldId: field.id,
+                                  isSelected: false,
+                                })
+                              }
+                            })
+                          }
+                        }}
+                        disabled={!fieldsData?.items || fieldsData.items.length === 0}
+                      >
+                        Deselect All
+                      </Button>
+                    </Space>
+                  </div>
                   {fieldsLoading ? (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
                       <Spin />
