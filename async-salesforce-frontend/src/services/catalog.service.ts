@@ -84,6 +84,18 @@ export interface PaginatedCatalogFieldsResponse {
   }
 }
 
+// Explicit type exports for better module resolution
+export type {
+  CatalogObject,
+  CatalogField,
+  SyncObjectsResponse,
+  SyncFieldsResponse,
+  FilterCatalogObjectsRequest,
+  FilterCatalogFieldsRequest,
+  PaginatedCatalogObjectsResponse,
+  PaginatedCatalogFieldsResponse,
+}
+
 /**
  * Catalog API Service
  * Tất cả các API calls liên quan đến Catalog

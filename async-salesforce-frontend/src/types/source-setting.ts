@@ -36,3 +36,10 @@ export interface UpdateSourceSettingRequest {
   refreshToken?: string
 }
 
+// Explicit type exports for better module resolution
+export type {
+  SourceSetting,
+  CreateSourceSettingRequest,
+  UpdateSourceSettingRequest,
+}
+

@@ -1,36 +1,15 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import {
-  Button,
-  Card,
-  Space,
-  Tag,
-  Empty,
-  Spin,
-  Typography,
-  Drawer,
-  Form,
-  Input,
-  Select,
-  message,
-  Alert,
-  Divider,
-  Badge,
-  Switch,
-} from 'antd'
-import { ArrowLeftOutlined, SettingOutlined, CopyOutlined, CheckOutlined, CloseOutlined, SyncOutlined, DatabaseOutlined, SearchOutlined } from '@ant-design/icons'
-import { sourceApi } from '@/services/source.service'
-import { projectApi } from '@/services/project.service'
-import { sourceSettingApi } from '@/services/source-setting.service'
-import { catalogApi } from '@/services/catalog.service'
-import {
-  SourceProvider,
-  SourceStatus,
-} from '@/types/source'
+import { createFileRoute } from '@tanstack/react-router'
+import { useState, useMemo, useCallback } from 'react'
+import { Empty, Spin, Card, message } from 'antd'
 import { AuthType } from '@/types/source-setting'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-
-const { Title, Text } = Typography
+import { SourceHeader } from '@/components/source-detail/SourceHeader'
+import { CatalogSection } from '@/components/source-detail/CatalogSection'
+import { SettingsDrawer } from '@/components/source-detail/SettingsDrawer'
+import { OAuthDrawer } from '@/components/source-detail/OAuthDrawer'
+import { useSourceDetail } from '@/hooks/useSourceDetail'
+import { useCatalog } from '@/hooks/useCatalog'
+import { useOAuth } from '@/hooks/useOAuth'
+import { useFieldChanges } from '@/hooks/useFieldChanges'
 
 export const Route = createFileRoute('/sources/$id')({
   component: SourceDetailPage,
@@ -38,411 +17,113 @@ export const Route = createFileRoute('/sources/$id')({
 
 function SourceDetailPage() {
   const { id } = Route.useParams()
-  const navigate = useNavigate()
-  const [form] = Form.useForm()
   const [isSettingDrawerOpen, setIsSettingDrawerOpen] = useState(false)
   const [isOAuthDrawerOpen, setIsOAuthDrawerOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
-  const [showManualSetup, setShowManualSetup] = useState(false)
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
   const [objectSearch, setObjectSearch] = useState<string>('')
   const [objectFilterSelected, setObjectFilterSelected] = useState<boolean | undefined>(undefined)
   const [fieldSearch, setFieldSearch] = useState<string>('')
   const [fieldFilterSelected, setFieldFilterSelected] = useState<boolean | undefined>(undefined)
-  const [fieldChanges, setFieldChanges] = useState<Record<string, boolean>>({})
-  const queryClient = useQueryClient()
 
-  // Fetch source details
-  const { data: source, isLoading: sourceLoading } = useQuery({
-    queryKey: ['sources', id],
-    queryFn: () => sourceApi.getById(id),
-    enabled: !!id,
-  })
+  // Custom hooks
+  const {
+    source,
+    sourceLoading,
+    project,
+    sourceSetting,
+    isConnected,
+    saveSettingMutation,
+  } = useSourceDetail(id)
 
-  // Fetch project details
-  const { data: projectsData } = useQuery({
-    queryKey: ['projects', 'all'],
-    queryFn: () =>
-      projectApi.getAll({
-        page: 1,
-        take: 1000,
-      }),
-  })
+  const {
+    catalogData,
+    fieldsData,
+    fieldsLoading,
+    fieldsError,
+    syncObjectsMutation,
+    syncFieldsMutation,
+    toggleObjectSelectedMutation,
+    saveFieldChangesMutation,
+  } = useCatalog(id, selectedObjectId, objectSearch, objectFilterSelected, fieldSearch, fieldFilterSelected)
 
-  // Fetch source setting
-  const { data: sourceSetting } = useQuery({
-    queryKey: ['source-settings', id],
-    queryFn: () => sourceSettingApi.getBySourceId(id),
-    enabled: !!id,
-    retry: false,
-  })
+  const { fieldChanges, handleFieldChange, handleSelectAllFields, handleDeselectAllFields, handleCancelFieldChanges } = useFieldChanges(fieldsData?.items, selectedObjectId)
 
-  const project = projectsData?.items.find((p) => p.id === source?.projectId)
+  const { getCallbackUrl, handleAuthenticate } = useOAuth(id, sourceSetting || undefined)
 
-  // Create/Update mutation
-  const saveSettingMutation = useMutation({
-    mutationFn: async (values: {
-      instanceUrl: string
-      authType: AuthType
-      scopes?: string[]
-      clientId?: string
-      clientSecret?: string
-      refreshToken?: string
-    }) => {
-      if (sourceSetting) {
-        return sourceSettingApi.update(sourceSetting.id, values)
-      } else {
-        return sourceSettingApi.create({
-          sourceId: id,
-          ...values,
-        })
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to save source setting')
-    },
-  })
+  // Handlers
+  const handleOpenSettingModal = useCallback(() => setIsSettingDrawerOpen(true), [])
+  const handleOpenOAuthModal = useCallback(() => setIsOAuthDrawerOpen(true), [])
+  const handleCloseSettingDrawer = useCallback(() => setIsSettingDrawerOpen(false), [])
+  const handleCloseOAuthDrawer = useCallback(() => setIsOAuthDrawerOpen(false), [])
 
-  // Fetch catalog objects from database
-  const { data: catalogData } = useQuery({
-    queryKey: ['catalog-objects', id, objectSearch, objectFilterSelected],
-    queryFn: () =>
-      catalogApi.getObjects({
-        sourceId: id,
-        search: objectSearch || undefined,
-        isSelected: objectFilterSelected,
-        page: 1,
-        take: 1000,
-      }),
-    enabled: !!id,
-    retry: false,
-  })
-
-  // Sync objects from Salesforce mutation
-  const syncObjectsMutation = useMutation({
-    mutationFn: async () => {
-      return catalogApi.syncObjects(id)
-    },
-    onSuccess: (data) => {
-      message.success(
-        `Successfully synced! Total: ${data.totalObjects}, Updated: ${data.updatedObjects}, Created: ${data.createdObjects}, Removed: ${data.removedObjects}`
-      )
-      // Refresh catalog objects after sync
-      queryClient.invalidateQueries({ queryKey: ['catalog-objects', id] })
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to sync objects from Salesforce')
-    },
-  })
-
-  // Fetch catalog fields from database
-  const { data: fieldsData, isLoading: fieldsLoading, error: fieldsError } = useQuery({
-    queryKey: ['catalog-fields', selectedObjectId, fieldSearch, fieldFilterSelected],
-    queryFn: () => {
-      if (!selectedObjectId) {
-        throw new Error('Object ID is required')
-      }
-      return catalogApi.getFields({
-        objectId: selectedObjectId,
-        search: fieldSearch || undefined,
-        isSelected: fieldFilterSelected,
-        page: 1,
-        take: 1000,
-      })
-    },
-    enabled: !!selectedObjectId,
-    retry: false,
-  })
-
-  // Sync fields from Salesforce mutation
-  const syncFieldsMutation = useMutation({
-    mutationFn: async (objectId: string) => {
-      return catalogApi.syncFields(objectId)
-    },
-    onSuccess: (data) => {
-      message.success(
-        `Successfully synced fields! Total: ${data.totalFields}, Updated: ${data.updatedFields}, Created: ${data.createdFields}, Removed: ${data.removedFields}`
-      )
-      // Refresh catalog fields after sync
-      if (selectedObjectId) {
-        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
-      }
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to sync fields from Salesforce')
-    },
-  })
-
-  // Toggle object selected mutation
-  const toggleObjectSelectedMutation = useMutation({
-    mutationFn: async ({ objectId, isSelected }: { objectId: string; isSelected: boolean }) => {
-      return catalogApi.toggleObjectSelected(objectId, isSelected)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['catalog-objects', id] })
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to update object selection')
-    },
-  })
-
-  // Toggle field selected mutation (for individual field)
-  const toggleFieldSelectedMutation = useMutation({
-    mutationFn: async ({ fieldId, isSelected }: { fieldId: string; isSelected: boolean }) => {
-      return catalogApi.toggleFieldSelected(fieldId, isSelected)
-    },
-    onSuccess: () => {
-      if (selectedObjectId) {
-        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
-      }
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to update field selection')
-    },
-  })
-
-  // Save all field changes mutation
-  const saveFieldChangesMutation = useMutation({
-    mutationFn: async (changes: Record<string, boolean>) => {
-      // Group changes by isSelected value
-      const selectFields: string[] = []
-      const deselectFields: string[] = []
-
-      Object.entries(changes).forEach(([fieldId, isSelected]) => {
-        if (isSelected) {
-          selectFields.push(fieldId)
-        } else {
-          deselectFields.push(fieldId)
-        }
-      })
-
-      // Execute bulk updates
-      const promises: Promise<{ updatedCount: number; skippedCount: number }>[] = []
-      
-      if (selectFields.length > 0) {
-        promises.push(catalogApi.bulkUpdateFieldsSelected(selectFields, true))
-      }
-      if (deselectFields.length > 0) {
-        promises.push(catalogApi.bulkUpdateFieldsSelected(deselectFields, false))
-      }
-
-      const results = await Promise.all(promises)
-      const totalUpdated = results.reduce((sum, r) => sum + r.updatedCount, 0)
-      const totalSkipped = results.reduce((sum, r) => sum + r.skippedCount, 0)
-      
-      return { updatedCount: totalUpdated, skippedCount: totalSkipped }
-    },
-    onSuccess: (data) => {
-      if (selectedObjectId) {
-        queryClient.invalidateQueries({ queryKey: ['catalog-fields', selectedObjectId] })
-        setFieldChanges({})
-        if (data.skippedCount > 0) {
-          message.success(`Saved ${data.updatedCount} fields. ${data.skippedCount} required fields were skipped.`)
-        } else {
-          message.success(`Successfully saved ${data.updatedCount} field selections`)
-        }
-      }
-    },
-    onError: (error: Error) => {
-      message.error(error.message || 'Failed to save field selections')
-    },
-  })
-
-  // Reset field changes when object changes
-  useEffect(() => {
-    setFieldChanges({})
-  }, [selectedObjectId])
-
-  // Listen for OAuth callback messages from popup window
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify origin for security
-      const allowedOrigin = window.location.origin
-      if (event.origin !== allowedOrigin) {
-        return
-      }
-
-      // Check if message is from OAuth callback
-      if (event.data?.type === 'oauth-callback') {
-        const { success, error: errorMessage, sourceId: callbackSourceId } = event.data
-
-        // Only handle if sourceId matches current source
-        if (callbackSourceId && callbackSourceId !== id) {
-          return
-        }
-
-        if (success) {
-          message.success('Successfully connected to Salesforce!')
-          // Refresh source settings
-          queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
-          setIsOAuthDrawerOpen(false)
-        } else {
-          message.error(
-            errorMessage || 'Failed to connect to Salesforce. Please try again.'
-          )
-        }
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-
-    return () => {
-      window.removeEventListener('message', handleMessage)
-    }
-  }, [id, queryClient])
-
-  // Generate callback URL from API base URL
-  const getCallbackUrl = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-    // Remove /api suffix if present, then add oauth callback route
-    const baseUrl = apiBaseUrl.replace(/\/api$/, '')
-    return `${baseUrl}/api/auth/oauth/callback`
-  }
-
-  const handleAuthenticate = async () => {
-    try {
-      // Check if source setting exists
-      if (!sourceSetting) {
-        message.error('Please configure settings first')
-        return
-      }
-
-      // Call backend API to get authorization URL and open in popup window
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-      const authUrl = `${apiBaseUrl}/auth/oauth/authenticate?sourceId=${id}`
-      
-      // Calculate center position for popup
-      const width = 600
-      const height = 700
-      const left = (window.screen.width - width) / 2
-      const top = (window.screen.height - height) / 2
-      
-      // Open in popup window (similar to Google OAuth)
-      // Remove noopener to allow window.close() to work
-      const popup = window.open(
-        authUrl,
-        'oauth_popup',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
-      )
-      
-      // Store reference to popup window for potential future use
-      if (popup) {
-        // Check if popup is closed periodically
-        const checkPopup = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkPopup)
-            // Refresh data when popup closes
-            queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
-          }
-        }, 500)
-      }
-    } catch (error: any) {
-      message.error(error.message || 'Failed to authenticate')
-    }
-  }
-
-  const handleCopyCallbackUrl = async () => {
-    try {
-      const callbackUrl = getCallbackUrl()
-      await navigator.clipboard.writeText(callbackUrl)
-      setIsCopied(true)
-      message.success('Callback URL copied to clipboard!')
-      setTimeout(() => {
-        setIsCopied(false)
-      }, 2000)
-    } catch (error) {
-      message.error('Failed to copy URL')
-    }
-  }
-
-  const handleOpenSettingModal = () => {
-    if (sourceSetting) {
-      form.setFieldsValue({
-        instanceUrl: sourceSetting.instanceUrl,
-        authType: sourceSetting.authType,
-        scopes: sourceSetting.scopes?.join(', ') || 'api, refresh_token, offline_access',
-        clientId: sourceSetting.clientId || '',
-        refreshToken: sourceSetting.refreshToken || '',
-        clientSecret: '', // Don't show secrets in form
-      })
-      setShowManualSetup(!!sourceSetting.refreshToken)
-    } else {
-      form.setFieldsValue({
-        authType: AuthType.OAUTH2,
-        scopes: 'api, refresh_token, offline_access',
-      })
-      setShowManualSetup(false)
-    }
-    setIsSettingDrawerOpen(true)
-  }
-
-  const handleSaveSetting = async (values: {
+  const handleSaveSetting = useCallback(async (values: {
     instanceUrl: string
     authType: AuthType
-    scopes?: string
+    scopes?: string[]
     clientId?: string
     clientSecret?: string
     refreshToken?: string
   }) => {
-    const scopesArray = values.scopes
-      ? values.scopes.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : undefined
-
-    // Prepare update data - don't send clientSecret if it's empty
-    const updateData: any = {
-      instanceUrl: values.instanceUrl,
-      authType: values.authType,
-      scopes: scopesArray,
-      clientId: values.clientId,
-      refreshToken: values.refreshToken,
-    }
-
-    // Only include clientSecret if it has a value (non-empty string)
-    if (values.clientSecret && values.clientSecret.trim() !== '') {
-      updateData.clientSecret = values.clientSecret
-    }
-
     try {
-      await saveSettingMutation.mutateAsync(updateData)
+      await saveSettingMutation.mutateAsync(values)
       message.success(
         sourceSetting
           ? 'Source setting updated successfully'
           : 'Source setting created successfully',
       )
       setIsSettingDrawerOpen(false)
-      form.resetFields()
-      setShowManualSetup(false)
     } catch (error) {
       // Error is already handled in mutation onError
     }
-  }
+  }, [saveSettingMutation, sourceSetting])
 
-  const getProviderColor = (provider: SourceProvider) => {
-    switch (provider) {
-      case SourceProvider.SALESFORCE:
-        return 'blue'
-      case SourceProvider.HUBSPOT:
-        return 'orange'
-      case SourceProvider.CUSTOM:
-        return 'green'
-      default:
-        return 'default'
+  const handleCopyCallbackUrl = useCallback(async () => {
+    try {
+      const callbackUrl = getCallbackUrl()
+      await navigator.clipboard.writeText(callbackUrl)
+      setIsCopied(true)
+      message.success('Callback URL copied to clipboard!')
+      setTimeout(() => setIsCopied(false), 2000)
+    } catch (error) {
+      message.error('Failed to copy URL')
     }
-  }
+  }, [getCallbackUrl])
 
-  const getStatusColor = (status: SourceStatus) => {
-    switch (status) {
-      case SourceStatus.ACTIVE:
-        return 'green'
-      case SourceStatus.DISABLED:
-        return 'red'
-      default:
-        return 'default'
+  const handleSaveRefreshToken = useCallback(async (refreshToken: string) => {
+    if (!sourceSetting) {
+      message.error('Please save settings first')
+      return
     }
-  }
+    await saveSettingMutation.mutateAsync({
+      instanceUrl: sourceSetting.instanceUrl,
+      authType: sourceSetting.authType,
+      scopes: sourceSetting.scopes,
+      clientId: sourceSetting.clientId,
+      refreshToken,
+    })
+  }, [sourceSetting, saveSettingMutation])
+
+  const handleObjectSelect = useCallback((objectId: string) => setSelectedObjectId(objectId), [])
+  const handleObjectToggle = useCallback((objectId: string, isSelected: boolean) => {
+    toggleObjectSelectedMutation.mutate({ objectId, isSelected })
+  }, [toggleObjectSelectedMutation])
+  const handleObjectSearchChange = useCallback((search: string) => setObjectSearch(search), [])
+  const handleObjectFilterChange = useCallback((filter: boolean | undefined) => setObjectFilterSelected(filter), [])
+  const handleObjectsSync = useCallback(() => syncObjectsMutation.mutate(), [syncObjectsMutation])
+
+  const handleSaveFieldChanges = useCallback(() => {
+    saveFieldChangesMutation.mutate(fieldChanges)
+  }, [saveFieldChangesMutation, fieldChanges])
+  const handleFieldSearchChange = useCallback((search: string) => setFieldSearch(search), [])
+  const handleFieldFilterChange = useCallback((filter: boolean | undefined) => setFieldFilterSelected(filter), [])
+  const handleFieldsSync = useCallback(() => {
+    if (selectedObjectId) syncFieldsMutation.mutate(selectedObjectId)
+  }, [selectedObjectId, syncFieldsMutation])
+
+  // Memoized data - MUST be before any early returns (Rules of Hooks)
+  const catalogObjects = useMemo(() => catalogData?.items || [], [catalogData?.items])
+  const catalogFields = useMemo(() => fieldsData?.items || [], [fieldsData?.items])
 
   if (sourceLoading) {
     return (
@@ -467,697 +148,65 @@ function SourceDetailPage() {
 
   return (
     <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
-      {/* Source Header */}
-      <Card style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate({ to: '/sources' })}
-              style={{ marginBottom: 16 }}
-            >
-              Back to Sources
-            </Button>
-            <Space align="center" style={{ marginBottom: 8 }}>
-              <Title level={2} style={{ margin: 0 }}>
-                {source.name}
-              </Title>
-              {sourceSetting?.refreshToken && (
-                <Badge 
-                  status="success" 
-                  text={<Text type="success" strong>Connected</Text>}
-                />
-              )}
-            </Space>
-            <Space wrap>
-              <Tag color={getProviderColor(source.provider)}>
-                {source.provider.toUpperCase()}
-              </Tag>
-              <Tag>{source.environment.toUpperCase()}</Tag>
-              <Tag color={getStatusColor(source.status)}>
-                {source.status.toUpperCase()}
-              </Tag>
-              {project && (
-                <Tag>
-                  Project: {project.name}
-                </Tag>
-              )}
-            </Space>
-          </div>
-          <Space direction="vertical" align="end" style={{ alignItems: 'flex-end' }}>
-            <Space>
-              <Button
-                type="primary"
-                icon={<SettingOutlined />}
-                onClick={handleOpenSettingModal}
-              >
-                {sourceSetting ? 'Edit Settings' : 'Configure Settings'}
-              </Button>
-              {sourceSetting && (
-                <>
-                  <Button
-                    type="default"
-                    onClick={() => {
-                      // Load current refresh token if available
-                      if (sourceSetting.refreshToken) {
-                        form.setFieldsValue({
-                          refreshToken: sourceSetting.refreshToken,
-                        })
-                      }
-                      setIsOAuthDrawerOpen(true)
-                    }}
-                  >
-                    Connect to Salesforce
-                  </Button>
-                </>
-              )}
-            </Space>
-            <div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Created: {new Date(source.createdAt).toLocaleDateString()} | 
-                Updated: {new Date(source.updatedAt).toLocaleDateString()}
-              </Text>
-            </div>
-          </Space>
-        </div>
-      </Card>
+      <SourceHeader
+        source={source}
+        projectName={project?.name}
+        isConnected={isConnected}
+        onOpenSettings={handleOpenSettingModal}
+        onOpenOAuth={handleOpenOAuthModal}
+      />
 
-      {/* Catalog Objects and Fields - 3/7 Layout */}
-      {catalogData && catalogData.items.length > 0 && (
-        <Card
-          title={
-            <Space>
-              <DatabaseOutlined />
-              <span>Catalog Objects & Fields</span>
-            </Space>
-          }
-          style={{ marginBottom: 24 }}
-        >
-          <div style={{ display: 'flex', gap: 16, minHeight: '500px' }}>
-            {/* Left: Objects List (3 columns) */}
-            <div style={{ flex: '0 0 30%', borderRight: '1px solid #f0f0f0', paddingRight: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  Objects ({catalogData?.meta.totalItems || 0})
-                </Title>
-                {sourceSetting?.refreshToken && (
-                  <Button
-                    type="default"
-                    size="small"
-                    icon={<SyncOutlined />}
-                    loading={syncObjectsMutation.isPending}
-                    onClick={() => syncObjectsMutation.mutate()}
-                  >
-                    Sync
-                  </Button>
-                )}
-              </div>
-              {/* Search and Filter for Objects */}
-              <Space style={{ width: '100%', marginBottom: 16 }} size={8}>
-                <Input
-                  placeholder="Search objects..."
-                  prefix={<SearchOutlined />}
-                  value={objectSearch}
-                  onChange={(e) => setObjectSearch(e.target.value)}
-                  allowClear
-                  style={{ flex: 1 }}
-                />
-                <Select
-                  placeholder="Filter by selection"
-                  value={objectFilterSelected === undefined ? 'all' : objectFilterSelected ? 'selected' : 'unselected'}
-                  onChange={(value) => {
-                    if (value === 'all') {
-                      setObjectFilterSelected(undefined)
-                    } else {
-                      setObjectFilterSelected(value === 'selected')
-                    }
-                  }}
-                  style={{ width: 150 }}
-                >
-                  <Select.Option value="all">All Objects</Select.Option>
-                  <Select.Option value="selected">Selected Only</Select.Option>
-                  <Select.Option value="unselected">Unselected Only</Select.Option>
-                </Select>
-              </Space>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {!catalogData || catalogData.items.length === 0 ? (
-                  <Empty description="No objects found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                ) : (
-                  <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                    {[...catalogData.items]
-                      .sort((a, b) => {
-                        const nameA = (a.label || a.apiName).toLowerCase()
-                        const nameB = (b.label || b.apiName).toLowerCase()
-                        return nameA.localeCompare(nameB)
-                      })
-                      .map((obj) => (
-                      <Card
-                        key={obj.id}
-                        size="small"
-                        hoverable
-                        onClick={() => {
-                          setSelectedObjectId(obj.id)
-                        }}
-                        style={{
-                          cursor: 'pointer',
-                          border: selectedObjectId === obj.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                          backgroundColor: selectedObjectId === obj.id ? '#e6f7ff' : '#fff',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                }}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation()
-                                }}
-                              >
-                                <Switch
-                                  checked={obj.isSelected}
-                                  size="small"
-                                  onChange={(checked) => {
-                                    toggleObjectSelectedMutation.mutate({
-                                      objectId: obj.id,
-                                      isSelected: checked,
-                                    })
-                                  }}
-                                />
-                              </div>
-                              <Text strong style={{ flex: 1 }}>
-                                {obj.label || obj.apiName}
-                              </Text>
-                            </div>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {obj.apiName}
-                            </Text>
-                          </div>
-                        </div>
-                      </Card>
-                      ))}
-                  </Space>
-                )}
-              </div>
-            </div>
+      <CatalogSection
+        objects={catalogObjects}
+        objectsTotal={catalogData?.meta.totalItems || 0}
+        selectedObjectId={selectedObjectId}
+        objectSearch={objectSearch}
+        objectFilterSelected={objectFilterSelected}
+        fields={catalogFields}
+        fieldsTotal={fieldsData?.meta.totalItems || 0}
+        fieldSearch={fieldSearch}
+        fieldFilterSelected={fieldFilterSelected}
+        fieldChanges={fieldChanges}
+        isObjectsSyncing={syncObjectsMutation.isPending}
+        isFieldsLoading={fieldsLoading}
+        isFieldsSyncing={syncFieldsMutation.isPending}
+        isSavingFields={saveFieldChangesMutation.isPending}
+        fieldsError={fieldsError}
+        canSync={isConnected}
+        onObjectSelect={handleObjectSelect}
+        onObjectToggle={handleObjectToggle}
+        onObjectSearchChange={handleObjectSearchChange}
+        onObjectFilterChange={handleObjectFilterChange}
+        onObjectsSync={handleObjectsSync}
+        onFieldChange={handleFieldChange}
+        onSelectAllFields={handleSelectAllFields}
+        onDeselectAllFields={handleDeselectAllFields}
+        onSaveFieldChanges={handleSaveFieldChanges}
+        onCancelFieldChanges={handleCancelFieldChanges}
+        onFieldSearchChange={handleFieldSearchChange}
+        onFieldFilterChange={handleFieldFilterChange}
+        onFieldsSync={handleFieldsSync}
+      />
 
-            {/* Right: Fields List (7 columns) */}
-            <div style={{ flex: '0 0 70%', paddingLeft: 16 }}>
-              {selectedObjectId ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <Title level={5} style={{ margin: 0 }}>
-                      Fields
-                      {fieldsData && ` (${fieldsData.meta.totalItems})`}
-                    </Title>
-                    {sourceSetting?.refreshToken && (
-                      <Button
-                        type="default"
-                        size="small"
-                        icon={<SyncOutlined />}
-                        loading={syncFieldsMutation.isPending}
-                        onClick={() => syncFieldsMutation.mutate(selectedObjectId)}
-                      >
-                        Sync Fields
-                      </Button>
-                    )}
-                  </div>
-                  {/* Search and Filter for Fields */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-                    <Space style={{ flex: 1 }} size={8}>
-                      <Input
-                        placeholder="Search fields..."
-                        prefix={<SearchOutlined />}
-                        value={fieldSearch}
-                        onChange={(e) => setFieldSearch(e.target.value)}
-                        allowClear
-                        style={{ flex: 1 }}
-                      />
-                      <Select
-                        placeholder="Filter by selection"
-                        value={fieldFilterSelected === undefined ? 'all' : fieldFilterSelected ? 'selected' : 'unselected'}
-                        onChange={(value) => {
-                          if (value === 'all') {
-                            setFieldFilterSelected(undefined)
-                          } else {
-                            setFieldFilterSelected(value === 'selected')
-                          }
-                        }}
-                        style={{ width: 150 }}
-                      >
-                        <Select.Option value="all">All Fields</Select.Option>
-                        <Select.Option value="selected">Selected Only</Select.Option>
-                        <Select.Option value="unselected">Unselected Only</Select.Option>
-                      </Select>
-                    </Space>
-                    <Space size={8}>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          if (fieldsData?.items) {
-                            const newChanges = { ...fieldChanges }
-                            fieldsData.items.forEach((field) => {
-                              const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
-                              if (!currentState) {
-                                newChanges[field.id] = true
-                              }
-                            })
-                            setFieldChanges(newChanges)
-                          }
-                        }}
-                        disabled={!fieldsData?.items || fieldsData.items.length === 0}
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          if (fieldsData?.items) {
-                            const newChanges = { ...fieldChanges }
-                            fieldsData.items.forEach((field) => {
-                              // Skip required fields when deselecting
-                              if (!field.isRequired) {
-                                const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
-                                if (currentState) {
-                                  newChanges[field.id] = false
-                                }
-                              }
-                            })
-                            setFieldChanges(newChanges)
-                          }
-                        }}
-                        disabled={!fieldsData?.items || fieldsData.items.length === 0}
-                      >
-                        Deselect All
-                      </Button>
-                      {Object.keys(fieldChanges).length > 0 && (
-                        <>
-                          <Button
-                            size="small"
-                            type="primary"
-                            onClick={() => {
-                              saveFieldChangesMutation.mutate(fieldChanges)
-                            }}
-                            loading={saveFieldChangesMutation.isPending}
-                          >
-                            Save Changes
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => {
-                              setFieldChanges({})
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      )}
-                    </Space>
-                  </div>
-                  {fieldsLoading ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
-                      <Spin />
-                    </div>
-                  ) : fieldsError ? (
-                    <Empty
-                      description={
-                        <div>
-                          <Text type="danger">Error loading fields: {(fieldsError as Error).message}</Text>
-                        </div>
-                      }
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      style={{ marginTop: 40 }}
-                    />
-                  ) : fieldsData && fieldsData.items.length > 0 ? (
-                    <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
-                      <Space direction="vertical" style={{ width: '100%' }} size={8}>
-                        {fieldsData.items.map((field) => {
-                          const currentState = fieldChanges[field.id] !== undefined ? fieldChanges[field.id] : field.isSelected
-                          return (
-                            <Card
-                              key={field.id}
-                              size="small"
-                              style={{
-                                border: currentState ? '1px solid #52c41a' : '1px solid #d9d9d9',
-                                backgroundColor: currentState ? '#f6ffed' : '#fff',
-                                ...(fieldChanges[field.id] !== undefined ? { border: '1px solid #1890ff', backgroundColor: '#e6f7ff' } : {}),
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                    <Switch
-                                      checked={currentState}
-                                      size="small"
-                                      disabled={field.isRequired}
-                                      onChange={(checked) => {
-                                        setFieldChanges((prev) => ({
-                                          ...prev,
-                                          [field.id]: checked,
-                                        }))
-                                      }}
-                                    />
-                                  <Space>
-                                    <Text strong>{field.label || field.apiName}</Text>
-                                    {field.isRequired && (
-                                      <Tag color="red">
-                                        Required
-                                      </Tag>
-                                    )}
-                                  </Space>
-                                </div>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  {field.apiName} • {field.sfType}
-                                  {field.length && ` • Length: ${field.length}`}
-                                  {field.precision && field.scale && ` • Precision: ${field.precision},${field.scale}`}
-                                </Text>
-                              </div>
-                            </div>
-                          </Card>
-                          )
-                        })}
-                      </Space>
-                    </div>
-                  ) : (
-                    <Empty
-                      description={
-                        <div>
-                          <Text>No fields found for this object</Text>
-                          <br />
-                          {sourceSetting?.refreshToken && (
-                            <Button
-                              type="link"
-                              size="small"
-                              onClick={() => syncFieldsMutation.mutate(selectedObjectId)}
-                              loading={syncFieldsMutation.isPending}
-                            >
-                              Sync fields from Salesforce
-                            </Button>
-                          )}
-                        </div>
-                      }
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      style={{ marginTop: 40 }}
-                    />
-                  )}
-                </>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '450px' }}>
-                  <Empty
-                    description="Select an object to view its fields"
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Source Details */}
-
-      {/* Source Setting Drawer */}
-      <Drawer
-        title={sourceSetting ? 'Edit Source Settings' : 'Configure Source Settings'}
-        placement="right"
-        onClose={() => {
-          setIsSettingDrawerOpen(false)
-          form.resetFields()
-          setShowManualSetup(false)
-        }}
+      <SettingsDrawer
         open={isSettingDrawerOpen}
-        width={600}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSaveSetting}
-          autoComplete="off"
-        >
-          <Form.Item
-            label="Instance URL"
-            name="instanceUrl"
-            rules={[
-              { required: true, message: 'Please enter instance URL' },
-              { type: 'url', message: 'Please enter a valid URL' },
-            ]}
-          >
-            <Input placeholder="https://myinstance.salesforce.com" />
-          </Form.Item>
+        sourceSetting={sourceSetting || undefined}
+        isCopied={isCopied}
+        isSaving={saveSettingMutation.isPending}
+        onClose={handleCloseSettingDrawer}
+        onSave={handleSaveSetting}
+        onCopyCallbackUrl={handleCopyCallbackUrl}
+        getCallbackUrl={getCallbackUrl}
+      />
 
-          <Form.Item
-            label="Authentication Type"
-            name="authType"
-            rules={[{ required: true, message: 'Please select auth type' }]}
-          >
-            <Select>
-              {Object.values(AuthType).map((authType) => (
-                <Select.Option key={authType} value={authType}>
-                  {authType.toUpperCase()}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label="Callback URL"
-            tooltip="Copy this URL and add it to your Salesforce Connected App's Callback URLs"
-            extra={
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Add this URL to Salesforce: Setup → App Manager → Your App → OAuth Settings → Callback URLs
-              </Text>
-            }
-          >
-            <Space.Compact style={{ width: '100%' }}>
-              <Input
-                readOnly
-                value={getCallbackUrl()}
-                style={{ fontFamily: 'monospace', fontSize: 12 }}
-              />
-              <Button
-                icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
-                onClick={handleCopyCallbackUrl}
-              >
-                {isCopied ? 'Copied!' : 'Copy'}
-              </Button>
-            </Space.Compact>
-          </Form.Item>
-
-          <Form.Item
-            label="Scopes (comma-separated)"
-            name="scopes"
-            tooltip="Enter OAuth scopes separated by commas, e.g., api, refresh_token"
-            initialValue="api, refresh_token, offline_access"
-          >
-            <Input placeholder="api, refresh_token, offline_access" />
-          </Form.Item>
-
-          <Form.Item
-            label="Client ID"
-            name="clientId"
-            tooltip="Consumer Key from Salesforce Connected App"
-          >
-            <Input placeholder="3MVG9..." />
-          </Form.Item>
-
-          <Form.Item
-            label="Client Secret"
-            name="clientSecret"
-            tooltip="Consumer Secret from Salesforce Connected App"
-            extra={
-              sourceSetting?.clientSecret ? (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Secret already saved (masked as: {sourceSetting.clientSecret}). Leave empty to keep existing secret, or enter new secret to update.
-                </Text>
-              ) : null
-            }
-          >
-            <Space.Compact style={{ width: '100%' }}>
-              {sourceSetting?.clientSecret && (
-                <Input
-                  readOnly
-                  value={sourceSetting.clientSecret}
-                  style={{
-                    width: '30%',
-                    fontFamily: 'monospace',
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'default',
-                  }}
-                  disabled
-                />
-              )}
-              <Input.Password
-                style={sourceSetting?.clientSecret ? { width: '70%' } : { width: '100%' }}
-                placeholder={
-                  sourceSetting?.clientSecret
-                    ? "Enter new secret to update, or leave empty to keep existing"
-                    : "Enter client secret"
-                }
-              />
-            </Space.Compact>
-          </Form.Item>
-
-          {showManualSetup && (
-            <Form.Item
-              label="Refresh Token (Optional)"
-              name="refreshToken"
-              tooltip="Manually enter refresh token if OAuth flow setup fails"
-            >
-              <Input placeholder="Enter refresh token manually if needed" />
-            </Form.Item>
-          )}
-        </Form>
-
-        {/* Footer Actions */}
-        <Divider style={{ margin: '24px 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button
-            onClick={() => {
-              setIsSettingDrawerOpen(false)
-              form.resetFields()
-              setShowManualSetup(false)
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => form.submit()}
-            loading={saveSettingMutation.isPending}
-          >
-            Save Settings
-          </Button>
-        </div>
-      </Drawer>
-
-      {/* OAuth Authentication Drawer */}
-      <Drawer
-        title="OAuth Authentication"
-        placement="right"
-        onClose={() => {
-          setIsOAuthDrawerOpen(false)
-          setShowManualSetup(false)
-        }}
+      <OAuthDrawer
         open={isOAuthDrawerOpen}
-        width={500}
-      >
-        <Alert
-          message="Configure your settings first, then choose an authentication method"
-          type="info"
-          showIcon
-          style={{ marginBottom: 24 }}
-        />
-        
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <div>
-            <Title level={5} style={{ marginBottom: 12 }}>
-              Automatic Authentication
-            </Title>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-              Authenticate your Salesforce account automatically using OAuth 2.0 flow
-            </Text>
-            <Button
-              type="primary"
-              block
-              size="large"
-              disabled={showManualSetup}
-              onClick={handleAuthenticate}
-              loading={saveSettingMutation.isPending}
-            >
-              Authenticate your Salesforce account
-            </Button>
-          </div>
-
-          <Divider>OR</Divider>
-
-          <div>
-            <Title level={5} style={{ marginBottom: 12 }}>
-              Manual Setup
-            </Title>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-              Enter refresh token manually if OAuth flow setup fails
-            </Text>
-            <Button
-              type={showManualSetup ? 'primary' : 'default'}
-              block
-              size="large"
-              icon={showManualSetup ? <CloseOutlined /> : null}
-              onClick={() => {
-                setShowManualSetup(!showManualSetup)
-                if (!showManualSetup) {
-                  // Get refresh token from form if available
-                  const currentValues = form.getFieldsValue()
-                  if (!currentValues.refreshToken) {
-                    form.setFieldsValue({ refreshToken: '' })
-                  }
-                }
-              }}
-            >
-              {showManualSetup ? 'Cancel Manual Setup' : 'Set up manually'}
-            </Button>
-          </div>
-
-          {showManualSetup && (
-            <div style={{ marginTop: 16 }}>
-              <Form.Item
-                label="Refresh Token"
-                name="refreshToken"
-                tooltip="Manually enter refresh token if OAuth flow setup fails"
-                rules={[{ required: true, message: 'Please enter refresh token' }]}
-              >
-                <Input.TextArea
-                  placeholder="Enter refresh token manually if needed"
-                  rows={4}
-                />
-              </Form.Item>
-              <Button
-                type="primary"
-                block
-                onClick={async () => {
-                  try {
-                    const formValues = form.getFieldsValue()
-                    if (!formValues.refreshToken) {
-                      message.error('Please enter refresh token')
-                      return
-                    }
-
-                    if (!sourceSetting) {
-                      message.error('Please save settings first')
-                      return
-                    }
-
-                    await saveSettingMutation.mutateAsync({
-                      instanceUrl: sourceSetting.instanceUrl,
-                      authType: sourceSetting.authType,
-                      scopes: sourceSetting.scopes,
-                      clientId: sourceSetting.clientId,
-                      refreshToken: formValues.refreshToken,
-                    })
-
-                    message.success('Refresh token saved successfully')
-                    setIsOAuthDrawerOpen(false)
-                    queryClient.invalidateQueries({ queryKey: ['source-settings', id] })
-                  } catch (error) {
-                    // Error is already handled in mutation onError
-                  }
-                }}
-                loading={saveSettingMutation.isPending}
-              >
-                Save Refresh Token
-              </Button>
-            </div>
-          )}
-        </Space>
-      </Drawer>
+        sourceSetting={sourceSetting || undefined}
+        isSaving={saveSettingMutation.isPending}
+        onClose={handleCloseOAuthDrawer}
+        onAuthenticate={handleAuthenticate}
+        onSaveRefreshToken={handleSaveRefreshToken}
+      />
     </div>
   )
 }
-

@@ -55,3 +55,6 @@ export interface PaginatedSourceResponse {
   }
 }
 
+// Explicit exports for better module resolution
+export type { Source, CreateSourceRequest, FilterSourceRequest, PaginatedSourceResponse }
+
