@@ -93,8 +93,12 @@ export class SalesforceService implements ISalesforceService {
   /**
    * Get existing connection by ID
    */
-  getConnection(connectionId: string): jsforce.Connection | undefined {
-    return this.connections.get(connectionId);
+  getConnection(connectionId: string): jsforce.Connection {
+    const conn = this.connections.get(connectionId);
+    if (!conn) {
+      throw new Error(`Connection ${connectionId} not found`);
+    }
+    return conn;
   }
 
   /**
@@ -138,9 +142,6 @@ export class SalesforceService implements ISalesforceService {
     soql: string,
   ): Promise<jsforce.QueryResult<T>> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     return await conn.query(soql);
   }
@@ -153,9 +154,6 @@ export class SalesforceService implements ISalesforceService {
     soql: string,
   ): Promise<T[]> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     const results: T[] = [];
     let queryResult = await conn.query(soql);
@@ -179,9 +177,6 @@ export class SalesforceService implements ISalesforceService {
     sobjectType: string,
   ): Promise<jsforce.DescribeSObjectResult> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     return await conn.sobject(sobjectType).describe();
   }
@@ -193,9 +188,6 @@ export class SalesforceService implements ISalesforceService {
     connectionId: string,
   ): Promise<jsforce.DescribeGlobalResult> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     return await conn.describeGlobal();
   }
@@ -210,9 +202,6 @@ export class SalesforceService implements ISalesforceService {
     fields?: string[],
   ): Promise<Record<string, unknown>> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     if (fields && fields.length > 0) {
       return await conn.sobject(sobjectType).retrieve(recordId, { fields });
@@ -230,9 +219,6 @@ export class SalesforceService implements ISalesforceService {
     soql: string,
   ): Promise<T[]> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     const job = conn.bulk.createJob(sobjectType, 'query');
     const batch = job.createBatch();
@@ -259,9 +245,6 @@ export class SalesforceService implements ISalesforceService {
    */
   getConnectionInfo(connectionId: string): jsforce.UserInfo | null {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     return conn.userInfo || null;
   }
@@ -274,9 +257,6 @@ export class SalesforceService implements ISalesforceService {
     clientSecret: string,
   ): Promise<jsforce.OAuth2> {
     const conn = this.getConnection(connectionId);
-    if (!conn) {
-      throw new Error(`Connection ${connectionId} not found`);
-    }
 
     if (!conn.oauth2) {
       throw new Error('OAuth2 not configured for this connection');

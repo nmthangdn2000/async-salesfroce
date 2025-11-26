@@ -1,15 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo, useCallback } from 'react'
 import { Empty, Spin, Card, message } from 'antd'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AuthType } from '@/types/source-setting'
 import { SourceHeader } from '@/components/source-detail/SourceHeader'
 import { CatalogSection } from '@/components/source-detail/CatalogSection'
 import { SettingsDrawer } from '@/components/source-detail/SettingsDrawer'
 import { OAuthDrawer } from '@/components/source-detail/OAuthDrawer'
+import { TargetSettingDrawer } from '@/components/source-detail/TargetSettingDrawer'
 import { useSourceDetail } from '@/hooks/useSourceDetail'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useOAuth } from '@/hooks/useOAuth'
 import { useFieldChanges } from '@/hooks/useFieldChanges'
+import { targetApi } from '@/services/target.service'
+import type { Target } from '@/types/target'
+import { TargetKind } from '@/types/target'
 
 export const Route = createFileRoute('/sources/$id')({
   component: SourceDetailPage,
@@ -17,8 +22,10 @@ export const Route = createFileRoute('/sources/$id')({
 
 function SourceDetailPage() {
   const { id } = Route.useParams()
+  const queryClient = useQueryClient()
   const [isSettingDrawerOpen, setIsSettingDrawerOpen] = useState(false)
   const [isOAuthDrawerOpen, setIsOAuthDrawerOpen] = useState(false)
+  const [isTargetSettingDrawerOpen, setIsTargetSettingDrawerOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null)
   const [objectSearch, setObjectSearch] = useState<string>('')
@@ -51,11 +58,84 @@ function SourceDetailPage() {
 
   const { getCallbackUrl, handleAuthenticate } = useOAuth(id, sourceSetting || undefined)
 
+  // Fetch targets for the project
+  const { data: targetsData } = useQuery({
+    queryKey: ['targets', 'project', project?.id],
+    queryFn: () => targetApi.getAll({ projectId: project?.id, page: 1, take: 1000 }),
+    enabled: !!project?.id,
+  })
+
+  const targets = useMemo(() => targetsData?.items || [], [targetsData?.items])
+
+  // Get first target (simplified - in real app, you might want to select which target)
+  const selectedTarget = useMemo(() => {
+    if (!targets.length) return undefined
+    return targets[0]
+  }, [targets])
+
+  // Save target mutation
+  const saveTargetMutation = useMutation({
+    mutationFn: async (values: {
+      targetId?: string
+      kind?: TargetKind
+      name?: string
+      host?: string
+      port?: number
+      database?: string
+      username?: string
+      schema?: string
+      ssl: boolean
+      sslMode?: string
+      connectionString?: string
+      secretsRef?: string
+    }) => {
+      if (values.targetId) {
+        // Update existing target
+        const target = targets.find(t => t.id === values.targetId)
+        if (!target) {
+          throw new Error('Target not found')
+        }
+        // TODO: Add update API endpoint
+        message.info('Update target - API endpoint needed')
+        return target
+      } else {
+        // Create new target with connection
+        if (!values.kind || !values.name || !project?.id) {
+          throw new Error('Kind, name, and projectId are required to create target')
+        }
+        return targetApi.create({
+          projectId: project.id,
+          kind: values.kind,
+          name: values.name,
+          host: values.host,
+          port: values.port,
+          database: values.database,
+          username: values.username,
+          schema: values.schema,
+          ssl: values.ssl ?? false,
+          sslMode: values.sslMode,
+          connectionString: values.connectionString,
+          secretsRef: values.secretsRef,
+        })
+      }
+    },
+    onSuccess: () => {
+      message.success('Target saved successfully')
+      queryClient.invalidateQueries({ queryKey: ['targets'] })
+      setIsTargetSettingDrawerOpen(false)
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Failed to save target')
+    },
+  })
+
   // Handlers
   const handleOpenSettingModal = useCallback(() => setIsSettingDrawerOpen(true), [])
   const handleOpenOAuthModal = useCallback(() => setIsOAuthDrawerOpen(true), [])
+  const handleOpenTargetSettingModal = useCallback(() => setIsTargetSettingDrawerOpen(true), [])
   const handleCloseSettingDrawer = useCallback(() => setIsSettingDrawerOpen(false), [])
   const handleCloseOAuthDrawer = useCallback(() => setIsOAuthDrawerOpen(false), [])
+  const handleCloseTargetSettingDrawer = useCallback(() => setIsTargetSettingDrawerOpen(false), [])
 
   const handleSaveSetting = useCallback(async (values: {
     instanceUrl: string
@@ -100,6 +180,7 @@ function SourceDetailPage() {
       authType: sourceSetting.authType,
       scopes: sourceSetting.scopes,
       clientId: sourceSetting.clientId,
+      clientSecret: sourceSetting.clientSecret,
       refreshToken,
     })
   }, [sourceSetting, saveSettingMutation])
@@ -153,7 +234,7 @@ function SourceDetailPage() {
         projectName={project?.name}
         isConnected={isConnected}
         onOpenSettings={handleOpenSettingModal}
-        onOpenOAuth={handleOpenOAuthModal}
+        onOpenTargetSettings={handleOpenTargetSettingModal}
       />
 
       <CatalogSection
@@ -193,10 +274,12 @@ function SourceDetailPage() {
         sourceSetting={sourceSetting || undefined}
         isCopied={isCopied}
         isSaving={saveSettingMutation.isPending}
+        isConnected={isConnected}
         onClose={handleCloseSettingDrawer}
         onSave={handleSaveSetting}
         onCopyCallbackUrl={handleCopyCallbackUrl}
         getCallbackUrl={getCallbackUrl}
+        onOpenOAuth={handleOpenOAuthModal}
       />
 
       <OAuthDrawer
@@ -207,6 +290,20 @@ function SourceDetailPage() {
         onAuthenticate={handleAuthenticate}
         onSaveRefreshToken={handleSaveRefreshToken}
       />
+
+      {project?.id && (
+        <TargetSettingDrawer
+          open={isTargetSettingDrawerOpen}
+          projectId={project.id}
+          target={selectedTarget}
+          targets={targets}
+          isSaving={saveTargetMutation.isPending}
+          onClose={handleCloseTargetSettingDrawer}
+          onSave={async (values) => {
+            await saveTargetMutation.mutateAsync(values)
+          }}
+        />
+      )}
     </div>
   )
 }

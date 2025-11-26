@@ -60,17 +60,16 @@ export const FieldsList = memo<FieldsListProps>(({
         <Title level={5} style={{ margin: 0 }}>
           Fields ({totalItems})
         </Title>
-        {canSync && (
-          <Button
-            type="default"
-            size="small"
-            icon={<SyncOutlined />}
-            loading={isSyncing}
-            onClick={onSync}
-          >
-            Sync Fields
-          </Button>
-        )}
+        <Button
+          type="default"
+          size="small"
+          icon={<SyncOutlined />}
+          loading={isSyncing}
+          onClick={onSync}
+          disabled={!canSync}
+        >
+          Sync Fields
+        </Button>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
         <Space style={{ flex: 1 }} size={8}>
@@ -201,16 +200,15 @@ export const FieldsList = memo<FieldsListProps>(({
             <div>
               <Text>No fields found for this object</Text>
               <br />
-              {canSync && (
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={onSync}
-                  loading={isSyncing}
-                >
-                  Sync fields from Salesforce
-                </Button>
-              )}
+              <Button
+                type="link"
+                size="small"
+                onClick={onSync}
+                loading={isSyncing}
+                disabled={!canSync}
+              >
+                Sync fields from Salesforce
+              </Button>
             </div>
           }
           image={Empty.PRESENTED_IMAGE_SIMPLE}

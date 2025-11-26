@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, Space } from 'antd'
-import { FolderOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { FolderOutlined, DatabaseOutlined, ApiOutlined } from '@ant-design/icons'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -14,7 +14,7 @@ function App() {
           Async Salesforce
         </h1>
         <p style={{ fontSize: '16px', color: '#666' }}>
-          Manage your projects and sources
+          Manage your projects, sources, and targets
         </p>
       </div>
 
@@ -49,6 +49,23 @@ function App() {
             <Card.Meta
               title="Sources"
               description="Manage and configure your data sources"
+            />
+          </Card>
+        </Link>
+
+        <Link to="/targets">
+          <Card
+            hoverable
+            style={{ width: 300, textAlign: 'center' }}
+            cover={
+              <div style={{ padding: '40px', fontSize: '64px', color: '#722ed1' }}>
+                <ApiOutlined />
+              </div>
+            }
+          >
+            <Card.Meta
+              title="Targets"
+              description="Manage and configure your data targets"
             />
           </Card>
         </Link>

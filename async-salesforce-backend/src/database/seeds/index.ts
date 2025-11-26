@@ -15,7 +15,6 @@ import { seedSourceSettings } from './seeders/source-setting.seeder';
 import { seedSyncJobs } from './seeders/sync-job.seeder';
 import { seedSyncRuns } from './seeders/sync-run.seeder';
 import { seedTargets } from './seeders/target.seeder';
-import { seedTargetConnections } from './seeders/target-connection.seeder';
 import { seedTypeDictionary } from './seeders/type-dictionary.seeder';
 import { seedUsers } from './seeders/user.seeder';
 
@@ -42,10 +41,6 @@ export class Seeder {
       const sources = await seedSources(this.dataSource, projects);
       const sourceSettings = await seedSourceSettings(this.dataSource, sources);
       const targets = await seedTargets(this.dataSource, projects);
-      const targetConnections = await seedTargetConnections(
-        this.dataSource,
-        targets,
-      );
       const typeDictionary = await seedTypeDictionary(this.dataSource);
       const sfObjectsCatalog = await seedSfObjectsCatalog(
         this.dataSource,
@@ -77,7 +72,6 @@ export class Seeder {
       console.log(`   - ${sources.length} sources`);
       console.log(`   - ${sourceSettings.length} source settings`);
       console.log(`   - ${targets.length} targets`);
-      console.log(`   - ${targetConnections.length} target connections`);
       console.log(`   - ${typeDictionary.length} type dictionary entries`);
       console.log(`   - ${sfObjectsCatalog.length} SF objects catalog`);
       console.log(`   - ${sfFieldsCatalog.length} SF fields catalog`);

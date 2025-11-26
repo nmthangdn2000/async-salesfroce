@@ -13,7 +13,6 @@ import { SourceSettingEntity } from 'src/modules/source-setting/entities/source-
 import { SyncJobEntity } from 'src/modules/sync/entities/sync-job.entity';
 import { SyncRunEntity } from 'src/modules/sync/entities/sync-run.entity';
 import { TargetEntity } from 'src/modules/target/entities/target.entity';
-import { TargetConnectionEntity } from 'src/modules/target/entities/target-connection.entity';
 import { UserEntity } from 'src/modules/user/entities/user.entity';
 import { DataSource } from 'typeorm';
 
@@ -27,7 +26,6 @@ export async function clearDatabase(dataSource: DataSource): Promise<void> {
     SfFieldsCatalogEntity,
     SfObjectsCatalogEntity,
     TypeDictionaryEntity,
-    TargetConnectionEntity,
     TargetEntity,
     SourceSettingEntity,
     SourceEntity,

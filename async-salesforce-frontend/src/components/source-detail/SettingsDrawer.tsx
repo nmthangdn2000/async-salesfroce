@@ -1,6 +1,6 @@
 import React, { memo, useEffect } from 'react'
-import { Drawer, Form, Input, Select, Button, Space, Typography, Divider } from 'antd'
-import { CopyOutlined, CheckOutlined } from '@ant-design/icons'
+import { Drawer, Form, Input, Select, Button, Space, Typography, Divider, Badge } from 'antd'
+import { CopyOutlined, CheckOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { AuthType } from '@/types/source-setting'
 import type { SourceSetting } from '@/types/source-setting'
 
@@ -11,6 +11,7 @@ interface SettingsDrawerProps {
   sourceSetting: SourceSetting | undefined
   isCopied: boolean
   isSaving: boolean
+  isConnected: boolean
   onClose: () => void
   onSave: (values: {
     instanceUrl: string
@@ -22,6 +23,7 @@ interface SettingsDrawerProps {
   }) => Promise<void>
   onCopyCallbackUrl: () => void
   getCallbackUrl: () => string
+  onOpenOAuth: () => void
 }
 
 export const SettingsDrawer = memo<SettingsDrawerProps>(({
@@ -29,10 +31,12 @@ export const SettingsDrawer = memo<SettingsDrawerProps>(({
   sourceSetting,
   isCopied,
   isSaving,
+  isConnected,
   onClose,
   onSave,
   onCopyCallbackUrl,
   getCallbackUrl,
+  onOpenOAuth,
 }) => {
   const [form] = Form.useForm()
 
@@ -205,17 +209,35 @@ export const SettingsDrawer = memo<SettingsDrawerProps>(({
       </Form>
 
       <Divider style={{ margin: '24px 0' }} />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <Button onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button
-          type="primary"
-          onClick={handleSubmit}
-          loading={isSaving}
-        >
-          Save Settings
-        </Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+        <div>
+          <Button
+            type={isConnected ? "primary" : "default"}
+            icon={isConnected ? <CheckCircleOutlined /> : null}
+            onClick={() => {
+              onOpenOAuth()
+              handleClose()
+            }}
+            style={isConnected ? {
+              backgroundColor: '#52c41a',
+              borderColor: '#52c41a',
+            } : {}}
+          >
+            {isConnected ? 'Connected to Salesforce' : 'Connect to Salesforce'}
+          </Button>
+        </div>
+        <Space>
+          <Button onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            onClick={handleSubmit}
+            loading={isSaving}
+          >
+            Save Settings
+          </Button>
+        </Space>
       </div>
     </Drawer>
   )

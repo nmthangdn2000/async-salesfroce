@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TargetsRouteImport } from './routes/targets'
 import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,11 @@ import { Route as SourcesIdRouteImport } from './routes/sources.$id'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
 
+const TargetsRoute = TargetsRouteImport.update({
+  id: '/targets',
+  path: '/targets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
   path: '/sources',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/targets': typeof TargetsRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/targets': typeof TargetsRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/sources': typeof SourcesRouteWithChildren
+  '/targets': typeof TargetsRoute
   '/oauth/callback': typeof OauthCallbackRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/sources/$id': typeof SourcesIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/sources'
+    | '/targets'
     | '/oauth/callback'
     | '/projects/$id'
     | '/sources/$id'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/sources'
+    | '/targets'
     | '/oauth/callback'
     | '/projects/$id'
     | '/sources/$id'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects'
     | '/sources'
+    | '/targets'
     | '/oauth/callback'
     | '/projects/$id'
     | '/sources/$id'
@@ -103,11 +115,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   SourcesRoute: typeof SourcesRouteWithChildren
+  TargetsRoute: typeof TargetsRoute
   OauthCallbackRoute: typeof OauthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/targets': {
+      id: '/targets'
+      path: '/targets'
+      fullPath: '/targets'
+      preLoaderRoute: typeof TargetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sources': {
       id: '/sources'
       path: '/sources'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   SourcesRoute: SourcesRouteWithChildren,
+  TargetsRoute: TargetsRoute,
   OauthCallbackRoute: OauthCallbackRoute,
 }
 export const routeTree = rootRouteImport

@@ -48,17 +48,16 @@ export const ObjectsList = memo<ObjectsListProps>(({
         <Title level={5} style={{ margin: 0 }}>
           Objects ({totalItems})
         </Title>
-        {canSync && (
-          <Button
-            type="default"
-            size="small"
-            icon={<SyncOutlined />}
-            loading={isSyncing}
-            onClick={onSync}
-          >
-            Sync
-          </Button>
-        )}
+        <Button
+          type="default"
+          size="small"
+          icon={<SyncOutlined />}
+          loading={isSyncing}
+          onClick={onSync}
+          disabled={!canSync}
+        >
+          Sync
+        </Button>
       </div>
       <Space style={{ width: '100%', marginBottom: 16 }} size={8}>
         <Input

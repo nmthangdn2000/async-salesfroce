@@ -29,4 +29,7 @@ export enum ERROR_MESSAGES {
   // 1081 - 1090: Source Setting
   SourceSettingNotFound = 1081,
   SourceSettingAlreadyExists = 1082,
+
+  // 1091 - 1100: Target
+  TargetNotFound = 1091,
 }

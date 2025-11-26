@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import { Button, Card, Space, Tag, Typography, Badge } from 'antd'
-import { ArrowLeftOutlined, SettingOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SettingOutlined, DatabaseOutlined } from '@ant-design/icons'
 import { useNavigate } from '@tanstack/react-router'
 import type { Source } from '@/types/source'
 import { SourceProvider, SourceStatus } from '@/types/source'
@@ -12,7 +12,7 @@ interface SourceHeaderProps {
   projectName?: string
   isConnected: boolean
   onOpenSettings: () => void
-  onOpenOAuth: () => void
+  onOpenTargetSettings: () => void
 }
 
 const getProviderColor = (provider: SourceProvider) => {
@@ -44,7 +44,7 @@ export const SourceHeader = memo<SourceHeaderProps>(({
   projectName,
   isConnected,
   onOpenSettings,
-  onOpenOAuth,
+  onOpenTargetSettings,
 }) => {
   const navigate = useNavigate()
 
@@ -101,14 +101,13 @@ export const SourceHeader = memo<SourceHeaderProps>(({
             >
               {isConnected ? 'Edit Settings' : 'Configure Settings'}
             </Button>
-            {isConnected && (
-              <Button
-                type="default"
-                onClick={onOpenOAuth}
-              >
-                Connect to Salesforce
-              </Button>
-            )}
+            <Button
+              type="default"
+              icon={<DatabaseOutlined />}
+              onClick={onOpenTargetSettings}
+            >
+              Target Setting
+            </Button>
           </Space>
           <div>
             <Text type="secondary" style={{ fontSize: 12 }}>

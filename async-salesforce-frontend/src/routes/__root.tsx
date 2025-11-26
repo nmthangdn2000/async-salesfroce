@@ -6,6 +6,7 @@ import {
   HomeOutlined, 
   FolderOutlined, 
   DatabaseOutlined,
+  ApiOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined 
 } from '@ant-design/icons'
@@ -30,6 +31,7 @@ function RootComponent() {
     if (pathname === '/') return 'home'
     if (pathname.startsWith('/projects')) return 'projects'
     if (pathname.startsWith('/sources')) return 'sources'
+    if (pathname.startsWith('/targets')) return 'targets'
     return 'home'
   }, [location.pathname])
 
@@ -104,6 +106,11 @@ function RootComponent() {
               icon: <DatabaseOutlined />,
               label: <Link to="/sources">Sources</Link>,
             },
+            {
+              key: 'targets',
+              icon: <ApiOutlined />,
+              label: <Link to="/targets">Targets</Link>,
+            },
           ]}
         />
       </Sider>
@@ -135,6 +142,7 @@ function RootComponent() {
             {selectedKey === 'home' && 'Home'}
             {selectedKey === 'projects' && 'Projects'}
             {selectedKey === 'sources' && 'Sources'}
+            {selectedKey === 'targets' && 'Targets'}
           </div>
         </Header>
         <Content style={{ padding: '0', background: '#f0f2f5', minHeight: 'calc(100vh - 64px)' }}>

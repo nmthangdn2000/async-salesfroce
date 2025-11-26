@@ -15,15 +15,19 @@ export type TTarget = TBase & {
   projectId: string;
   kind: TARGET_KIND;
   name: string;
+  // Connection fields (merged from target_connections)
+  connectInfo?: Record<string, any>;
+  secretsRef?: string;
+  // Database connection fields
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  schema?: string;
+  ssl: boolean;
+  sslMode?: string;
+  connectionString?: string;
   project: TProject;
-  targetConnections: TTargetConnection[];
   objectMappings: any[]; // TObjectMapping - forward reference
   syncJobs: any[]; // TSyncJob - forward reference
-};
-
-export type TTargetConnection = TBase & {
-  targetId: string;
-  connectInfo: Record<string, any>;
-  secretsRef: string;
-  target: TTarget;
 };
