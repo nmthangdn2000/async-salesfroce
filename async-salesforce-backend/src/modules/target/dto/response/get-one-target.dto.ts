@@ -1,8 +1,9 @@
 import { BaseModelResponseDto } from '@app/common/base/model-response.dto.base';
-import { TGetTargetResponseDto } from '@app/shared/dtos/target/target.dto';
+import { TGetTargetResponseDto, CONNECTION_TYPE } from '@app/shared/dtos/target/target.dto';
 import { TARGET_KIND } from '@app/shared/models/target.model';
 import { ApiResponseProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { GetOneSourceResponseDto } from 'src/modules/source/dto/response/get-one-source.dto';
 
 export class GetOneTargetResponseDto
   extends BaseModelResponseDto
@@ -14,6 +15,13 @@ export class GetOneTargetResponseDto
   })
   @Expose()
   projectId!: string;
+
+  @ApiResponseProperty({
+    type: String,
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @Expose()
+  sourceId!: string;
 
   @ApiResponseProperty({
     type: String,
@@ -31,16 +39,11 @@ export class GetOneTargetResponseDto
   name!: string;
 
   @ApiResponseProperty({
-    type: Object,
-  })
-  @Expose()
-  connectInfo?: Record<string, any>;
-
-  @ApiResponseProperty({
     type: String,
+    enum: ['host', 'url'],
   })
   @Expose()
-  secretsRef?: string;
+  connectionType!: CONNECTION_TYPE;
 
   @ApiResponseProperty({
     type: String,
@@ -89,5 +92,11 @@ export class GetOneTargetResponseDto
   })
   @Expose()
   connectionString?: string;
-}
 
+  @ApiResponseProperty({
+    type: () => GetOneSourceResponseDto,
+  })
+  @Type(() => GetOneSourceResponseDto)
+  @Expose()
+  source!: GetOneSourceResponseDto;
+}

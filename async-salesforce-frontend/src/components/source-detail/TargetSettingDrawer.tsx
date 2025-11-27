@@ -25,7 +25,6 @@ interface TargetSettingDrawerProps {
     ssl: boolean
     sslMode?: string
     connectionString?: string
-    secretsRef?: string
   }) => Promise<any>
 }
 
@@ -68,20 +67,36 @@ export const TargetSettingDrawer = memo<TargetSettingDrawerProps>(({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      
+
       const updateData: any = {
         targetId: values.targetId,
         kind: values.targetKind,
         name: values.name,
-        host: values.host || undefined,
-        port: values.port || undefined,
-        database: values.database || undefined,
-        username: values.username || undefined,
-        schema: values.schema || undefined,
-        ssl: values.ssl ?? false,
-        sslMode: values.sslMode || undefined,
-        connectionString: values.connectionString || undefined,
-        secretsRef: values.targetId ? `target-secret-${values.targetId}` : undefined,
+      }
+
+      // Nếu chọn tab "Host" → chỉ lưu thông tin host, xóa connectionString
+      if (activeTab === 'host') {
+        updateData.connectionType = 'host'
+        updateData.host = values.host || undefined
+        updateData.port = values.port || undefined
+        updateData.database = values.database || undefined
+        updateData.username = values.username || undefined
+        updateData.schema = values.schema || undefined
+        updateData.ssl = values.ssl ?? false
+        updateData.sslMode = values.sslMode || undefined
+        updateData.connectionString = undefined // Xóa connectionString khi dùng tab Host
+      }
+      // Nếu chọn tab "URL" → chỉ lưu connectionString, xóa các field host
+      else if (activeTab === 'url') {
+        updateData.connectionType = 'url'
+        updateData.connectionString = values.connectionString || undefined
+        updateData.host = undefined // Xóa host
+        updateData.port = undefined // Xóa port
+        updateData.database = undefined // Xóa database
+        updateData.username = undefined // Xóa username
+        updateData.schema = undefined // Xóa schema
+        updateData.ssl = false // Reset SSL
+        updateData.sslMode = undefined // Xóa sslMode
       }
 
       await onSave(updateData)
@@ -123,8 +138,8 @@ export const TargetSettingDrawer = memo<TargetSettingDrawerProps>(({
             name="targetId"
             tooltip="Select existing target or create new one below"
           >
-            <Select 
-              placeholder="Select a target or create new" 
+            <Select
+              placeholder="Select a target or create new"
               showSearch
               allowClear
               filterOption={(input, option) =>

@@ -1,5 +1,6 @@
 import { TBase } from '@app/shared/models/base.model';
 import { TProject } from '@app/shared/models/project.model';
+import { TTarget } from './target.model';
 
 export enum SOURCE_PROVIDER {
   SALESFORCE = 'salesforce',
@@ -32,6 +33,7 @@ export type TSource = TBase & {
   status: SOURCE_STATUS;
   project: TProject;
   sourceSetting?: TSourceSetting;
+  target: TTarget; // TTarget - forward reference
   sfObjectsCatalog: any[]; // TSfObjectsCatalog - forward reference
   objectMappings: any[]; // TObjectMapping - forward reference
   syncJobs: any[]; // TSyncJob - forward reference

@@ -1,5 +1,6 @@
 import { TBase } from '@app/shared/models/base.model';
 import { TProject } from '@app/shared/models/project.model';
+import { TSource } from '@app/shared/models/source.model';
 
 export enum TARGET_KIND {
   POSTGRES = 'postgres',
@@ -11,13 +12,17 @@ export enum TARGET_KIND {
   MONGODB = 'mongodb',
 }
 
+export enum CONNECTION_TYPE {
+  HOST = 'host',
+  URL = 'url',
+}
+
 export type TTarget = TBase & {
   projectId: string;
+  sourceId: string;
   kind: TARGET_KIND;
   name: string;
-  // Connection fields (merged from target_connections)
-  connectInfo?: Record<string, any>;
-  secretsRef?: string;
+  connectionType: CONNECTION_TYPE;
   // Database connection fields
   host?: string;
   port?: number;
@@ -28,6 +33,7 @@ export type TTarget = TBase & {
   sslMode?: string;
   connectionString?: string;
   project: TProject;
+  source: TSource;
   objectMappings: any[]; // TObjectMapping - forward reference
   syncJobs: any[]; // TSyncJob - forward reference
 };

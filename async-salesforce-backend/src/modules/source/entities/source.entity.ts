@@ -19,6 +19,7 @@ import { SfObjectsCatalogEntity } from '../../catalog/entities/sf-objects-catalo
 import { ObjectMappingEntity } from '../../mapping/entities/object-mapping.entity';
 import { ProjectEntity } from '../../project/entities/project.entity';
 import { SourceSettingEntity } from '../../source-setting/entities/source-setting.entity';
+import { TargetEntity } from '../../target/entities/target.entity';
 import { SyncJobEntity } from '../../sync/entities/sync-job.entity';
 
 @Entity('sources')
@@ -85,4 +86,10 @@ export class SourceEntity extends BaseEntity implements TSource {
     onDelete: 'CASCADE',
   })
   syncJobs!: SyncJobEntity[];
+
+  @OneToOne(() => TargetEntity, (target) => target.source, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  target!: TargetEntity;
 }

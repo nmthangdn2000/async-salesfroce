@@ -22,6 +22,14 @@ export class CreateTargetRequestDto implements ICreateTargetRequestDto {
   projectId!: string;
 
   @ApiProperty({
+    description: 'Source ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  sourceId!: string;
+
+  @ApiProperty({
     description: 'Target kind (database type)',
     enum: TARGET_KIND,
     example: TARGET_KIND.POSTGRES,
@@ -39,20 +47,14 @@ export class CreateTargetRequestDto implements ICreateTargetRequestDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Connection info (JSON)',
-    required: false,
+    description: 'Connection type (host or url)',
+    enum: ['host', 'url'],
+    example: 'host',
+    default: 'host',
   })
-  @IsOptional()
-  @IsObject()
-  connectInfo?: Record<string, any>;
-
-  @ApiProperty({
-    description: 'Secrets reference',
-    required: false,
-  })
-  @IsOptional()
   @IsString()
-  secretsRef?: string;
+  @IsOptional()
+  connectionType?: string;
 
   @ApiProperty({
     description: 'Database host',

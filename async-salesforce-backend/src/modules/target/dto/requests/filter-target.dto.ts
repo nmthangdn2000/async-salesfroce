@@ -17,6 +17,14 @@ export class FilterTargetRequestDto
   projectId?: string;
 
   @ApiProperty({
+    description: 'Source ID',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  sourceId?: string;
+
+  @ApiProperty({
     description: 'Search',
     required: false,
   })

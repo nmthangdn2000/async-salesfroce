@@ -40,7 +40,7 @@ export class Seeder {
       );
       const sources = await seedSources(this.dataSource, projects);
       const sourceSettings = await seedSourceSettings(this.dataSource, sources);
-      const targets = await seedTargets(this.dataSource, projects);
+      const targets = await seedTargets(this.dataSource, projects, sources);
       const typeDictionary = await seedTypeDictionary(this.dataSource);
       const sfObjectsCatalog = await seedSfObjectsCatalog(
         this.dataSource,

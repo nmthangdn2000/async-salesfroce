@@ -8,6 +8,7 @@ import {
 import { ApiResponseProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { GetOneSourceSettingResponseDto } from 'src/modules/source-setting/dto/response/get-one-source-setting.dto';
+import { GetOneTargetResponseDto } from 'src/modules/target/dto/response/get-one-target.dto';
 
 export class GetOneSourceResponseDto
   extends BaseModelResponseDto
@@ -57,4 +58,11 @@ export class GetOneSourceResponseDto
   @Type(() => GetOneSourceSettingResponseDto)
   @Expose()
   sourceSetting?: GetOneSourceSettingResponseDto;
+
+  @ApiResponseProperty({
+    type: () => GetOneTargetResponseDto,
+  })
+  @Type(() => GetOneTargetResponseDto)
+  @Expose()
+  target!: GetOneTargetResponseDto;
 }

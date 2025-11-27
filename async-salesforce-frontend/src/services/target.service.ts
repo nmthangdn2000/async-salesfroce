@@ -34,5 +34,15 @@ export const targetApi = {
       body: data,
     })
   },
+
+  /**
+   * Cập nhật target
+   */
+  update: async (id: string, data: Partial<CreateTargetRequest>): Promise<Target> => {
+    return request<Target>(`/targets/${id}`, {
+      method: 'PATCH',
+      body: data,
+    })
+  },
 }
 

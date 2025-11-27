@@ -11,6 +11,7 @@ import {
   SOURCE_STATUS,
   TSource,
 } from '@app/shared/models/source.model';
+import { TGetTargetResponseDto } from '../target/target.dto';
 
 // Source DTOs
 export type TFilterSourceRequestDto = TBaseFilterRequestDto & {
@@ -33,12 +34,14 @@ export type TGetSourceResponseDto = TBaseModelResponseDto &
     | 'deletedBy'
     | 'project'
     | 'sourceSetting'
+    | 'target'
     | 'sfObjectsCatalog'
     | 'objectMappings'
     | 'syncJobs'
   > & {
     projectId: string;
     sourceSetting?: TGetSourceSettingResponseDto;
+    target?: TGetTargetResponseDto;
   };
 
 export type TGetPaginatedSourceResponseDto =

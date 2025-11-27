@@ -27,7 +27,7 @@ export class UUIDValidationPipe implements PipeTransform {
 export function UUIDParam(name: string): ParameterDecorator {
   return (
     target: object,
-    propertyKey: string | symbol,
+    propertyKey: string | symbol | undefined,
     parameterIndex: number,
   ) => {
     Param(name, new UUIDValidationPipe(name))(
@@ -35,11 +35,13 @@ export function UUIDParam(name: string): ParameterDecorator {
       propertyKey,
       parameterIndex,
     );
-    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
-    ApiParam({ name, type: 'string', format: 'uuid' })(
-      target,
-      propertyKey,
-      descriptor!,
-    );
+    if (propertyKey) {
+      const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+      ApiParam({ name, type: 'string', format: 'uuid' })(
+        target,
+        propertyKey,
+        descriptor!,
+      );
+    }
   };
 }

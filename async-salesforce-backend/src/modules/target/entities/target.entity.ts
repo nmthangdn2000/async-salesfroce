@@ -1,5 +1,5 @@
 import { BaseEntity } from '@app/core/modules/typeorm-config/entities/base.entities';
-import { TARGET_KIND, TTarget } from '@app/shared/models/target.model';
+import { TARGET_KIND, TTarget, CONNECTION_TYPE } from '@app/shared/models/target.model';
 import {
   Column,
   Entity,
@@ -7,17 +7,23 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 
 import { ObjectMappingEntity } from '../../mapping/entities/object-mapping.entity';
 import { ProjectEntity } from '../../project/entities/project.entity';
+import { SourceEntity } from '../../source/entities/source.entity';
 import { SyncJobEntity } from '../../sync/entities/sync-job.entity';
 
 @Entity('targets')
 @Index('idx_targets_project', ['projectId'])
+@Index('idx_targets_source', ['sourceId'])
 export class TargetEntity extends BaseEntity implements TTarget {
   @Column({ type: 'uuid', nullable: false })
   projectId!: string;
+
+  @Column({ type: 'uuid', nullable: false })
+  sourceId!: string;
 
   @Column({
     type: 'varchar',
@@ -29,12 +35,13 @@ export class TargetEntity extends BaseEntity implements TTarget {
   @Column({ type: 'varchar', length: 255, nullable: false })
   name!: string;
 
-  // Connection fields (merged from target_connections)
-  @Column({ type: 'jsonb', nullable: true })
-  connectInfo?: Record<string, any>;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  secretsRef?: string;
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: false,
+    default: 'host',
+  })
+  connectionType!: CONNECTION_TYPE;
 
   // Database connection fields
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -67,6 +74,12 @@ export class TargetEntity extends BaseEntity implements TTarget {
   })
   @JoinColumn({ name: 'project_id' })
   project!: ProjectEntity;
+
+  @OneToOne(() => SourceEntity, (source) => source.target, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'source_id' })
+  source!: SourceEntity;
 
   @OneToMany(() => ObjectMappingEntity, (mapping) => mapping.target, {
     cascade: true,

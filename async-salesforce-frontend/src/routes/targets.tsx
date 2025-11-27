@@ -17,8 +17,10 @@ import {
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { targetApi } from '@/services/target.service'
 import { projectApi } from '@/services/project.service'
+import { sourceApi } from '@/services/source.service'
 import { TargetKind } from '@/types/target'
 import type { Project } from '@/types/project'
+import type { Source } from '@/types/source'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/targets')({
@@ -78,11 +80,21 @@ function TargetsPage() {
 
   const handleCreate = (values: {
     projectId: string
+    sourceId: string
     kind: TargetKind
     name: string
   }) => {
     createMutation.mutate(values)
   }
+
+  // Watch projectId to fetch sources
+  const selectedProjectIdInForm = Form.useWatch('projectId', form)
+  
+  const { data: sourcesData } = useQuery({
+    queryKey: ['sources', 'project', selectedProjectIdInForm],
+    queryFn: () => sourceApi.getAll({ projectId: selectedProjectIdInForm, page: 1, take: 1000 }),
+    enabled: !!selectedProjectIdInForm && isModalOpen,
+  })
 
   const getKindColor = (kind: TargetKind) => {
     switch (kind) {
@@ -257,10 +269,33 @@ function TargetsPage() {
             name="projectId"
             rules={[{ required: true, message: 'Please select a project' }]}
           >
-            <Select placeholder="Select a project">
+            <Select 
+              placeholder="Select a project"
+              onChange={() => {
+                // Reset sourceId when project changes
+                form.setFieldsValue({ sourceId: undefined })
+              }}
+            >
               {projectsData?.items.map((project: Project) => (
                 <Select.Option key={project.id} value={project.id}>
                   {project.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Source"
+            name="sourceId"
+            rules={[{ required: true, message: 'Please select a source' }]}
+          >
+            <Select 
+              placeholder="Select a source"
+              disabled={!selectedProjectIdInForm}
+            >
+              {sourcesData?.items.map((source: Source) => (
+                <Select.Option key={source.id} value={source.id}>
+                  {source.name}
                 </Select.Option>
               ))}
             </Select>

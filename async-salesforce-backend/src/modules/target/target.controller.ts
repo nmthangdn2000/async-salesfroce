@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateTargetRequestDto } from 'src/modules/target/dto/requests/create-target.dto';
+import { UpdateTargetRequestDto } from 'src/modules/target/dto/requests/update-target.dto';
 import { FilterTargetRequestDto } from 'src/modules/target/dto/requests/filter-target.dto';
 import { GetPaginatedTargetResponseDto } from 'src/modules/target/dto/response/get-all-target.dto';
 import { GetOneTargetResponseDto } from 'src/modules/target/dto/response/get-one-target.dto';
@@ -25,6 +26,21 @@ export class TargetController {
     @Body() createTargetDto: CreateTargetRequestDto,
   ): Promise<TargetEntity> {
     return this.targetService.create(createTargetDto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a target' })
+  @ApiResponse({
+    status: 200,
+    description: 'The target has been successfully updated.',
+    type: GetOneTargetResponseDto,
+  })
+  @ApiBody({ type: UpdateTargetRequestDto })
+  async update(
+    @Param('id') id: string,
+    @Body() updateTargetDto: UpdateTargetRequestDto,
+  ): Promise<TargetEntity> {
+    return this.targetService.update(id, updateTargetDto);
   }
 
   @Get()

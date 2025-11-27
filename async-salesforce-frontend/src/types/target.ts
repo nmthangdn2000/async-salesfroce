@@ -8,14 +8,18 @@ export enum TargetKind {
   MONGODB = 'mongodb',
 }
 
+export enum ConnectionType {
+  HOST = 'host',
+  URL = 'url',
+}
+
 export interface Target {
   id: string
   projectId: string
+  sourceId: string
   kind: TargetKind
   name: string
-  // Connection fields (merged from target_connections)
-  connectInfo?: Record<string, any>
-  secretsRef?: string
+  connectionType: ConnectionType
   host?: string
   port?: number
   database?: string
@@ -30,10 +34,10 @@ export interface Target {
 
 export interface CreateTargetRequest {
   projectId: string
+  sourceId: string
   kind: TargetKind
   name: string
-  connectInfo?: Record<string, any>
-  secretsRef?: string
+  connectionType?: ConnectionType
   host?: string
   port?: number
   database?: string
@@ -48,6 +52,7 @@ export interface FilterTargetRequest {
   page?: number
   take?: number
   projectId?: string
+  sourceId?: string
   search?: string
   kind?: TargetKind
 }
@@ -62,7 +67,4 @@ export interface PaginatedTargetResponse {
     itemCount: number
   }
 }
-
-// Explicit exports for better module resolution
-export type { Target, CreateTargetRequest, FilterTargetRequest, PaginatedTargetResponse }
 

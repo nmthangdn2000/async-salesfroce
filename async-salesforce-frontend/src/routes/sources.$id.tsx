@@ -13,8 +13,7 @@ import { useCatalog } from '@/hooks/useCatalog'
 import { useOAuth } from '@/hooks/useOAuth'
 import { useFieldChanges } from '@/hooks/useFieldChanges'
 import { targetApi } from '@/services/target.service'
-import type { Target } from '@/types/target'
-import { TargetKind } from '@/types/target'
+import { TargetKind, ConnectionType } from '@/types/target'
 
 export const Route = createFileRoute('/sources/$id')({
   component: SourceDetailPage,
@@ -58,11 +57,11 @@ function SourceDetailPage() {
 
   const { getCallbackUrl, handleAuthenticate } = useOAuth(id, sourceSetting || undefined)
 
-  // Fetch targets for the project
+  // Fetch targets for the source
   const { data: targetsData } = useQuery({
-    queryKey: ['targets', 'project', project?.id],
-    queryFn: () => targetApi.getAll({ projectId: project?.id, page: 1, take: 1000 }),
-    enabled: !!project?.id,
+    queryKey: ['targets', 'source', id],
+    queryFn: () => targetApi.getAll({ sourceId: id, page: 1, take: 1000 }),
+    enabled: !!id,
   })
 
   const targets = useMemo(() => targetsData?.items || [], [targetsData?.items])
@@ -87,7 +86,7 @@ function SourceDetailPage() {
       ssl: boolean
       sslMode?: string
       connectionString?: string
-      secretsRef?: string
+      connectionType?: ConnectionType
     }) => {
       if (values.targetId) {
         // Update existing target
@@ -95,16 +94,7 @@ function SourceDetailPage() {
         if (!target) {
           throw new Error('Target not found')
         }
-        // TODO: Add update API endpoint
-        message.info('Update target - API endpoint needed')
-        return target
-      } else {
-        // Create new target with connection
-        if (!values.kind || !values.name || !project?.id) {
-          throw new Error('Kind, name, and projectId are required to create target')
-        }
-        return targetApi.create({
-          projectId: project.id,
+        return targetApi.update(values.targetId, {
           kind: values.kind,
           name: values.name,
           host: values.host,
@@ -115,7 +105,27 @@ function SourceDetailPage() {
           ssl: values.ssl ?? false,
           sslMode: values.sslMode,
           connectionString: values.connectionString,
-          secretsRef: values.secretsRef,
+          connectionType: values.connectionType,
+        })
+      } else {
+        // Create new target with connection
+        if (!values.kind || !values.name || !project?.id || !id) {
+          throw new Error('Kind, name, projectId, and sourceId are required to create target')
+        }
+        return targetApi.create({
+          projectId: project.id,
+          sourceId: id,
+          kind: values.kind,
+          name: values.name,
+          host: values.host,
+          port: values.port,
+          database: values.database,
+          username: values.username,
+          schema: values.schema,
+          ssl: values.ssl ?? false,
+          sslMode: values.sslMode,
+          connectionString: values.connectionString,
+          connectionType: values.connectionType,
         })
       }
     },
