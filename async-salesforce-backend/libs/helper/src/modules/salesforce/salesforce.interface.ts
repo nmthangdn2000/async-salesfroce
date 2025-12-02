@@ -112,7 +112,6 @@ export interface ISalesforceService {
    */
   bulkQuery<T extends Record<string, unknown> = Record<string, unknown>>(
     connectionId: string,
-    sobjectType: string,
     soql: string,
   ): Promise<T[]>;
 

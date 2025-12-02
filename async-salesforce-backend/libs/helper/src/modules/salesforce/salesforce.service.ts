@@ -211,33 +211,19 @@ export class SalesforceService implements ISalesforceService {
   }
 
   /**
-   * Bulk query
+   * Bulk query using Bulk API v2
    */
   async bulkQuery<T extends Record<string, unknown> = Record<string, unknown>>(
     connectionId: string,
-    sobjectType: string,
     soql: string,
   ): Promise<T[]> {
     const conn = this.getConnection(connectionId);
 
-    const job = conn.bulk.createJob(sobjectType, 'query');
-    const batch = job.createBatch();
-    batch.execute(soql);
-    await batch.on('queue', () => {
-      batch.poll(10000, 2000);
-    });
+    const recordStream = await conn.bulk2.query(soql);
 
-    return new Promise<T[]>((resolve, reject) => {
-      batch.on('response', (results: unknown[]) => {
-        void job.close();
-        resolve(results as T[]);
-      });
+    const records = await recordStream.toArray();
 
-      batch.on('error', (error: Error) => {
-        void job.close();
-        reject(error);
-      });
-    });
+    return records as T[];
   }
 
   /**
