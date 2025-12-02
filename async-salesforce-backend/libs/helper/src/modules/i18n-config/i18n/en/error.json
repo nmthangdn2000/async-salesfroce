@@ -30,5 +30,10 @@
   "1103": "Field mapping not found",
   "1104": "Field mapping already exists for this object mapping and field",
   "1105": "No catalog fields found",
-  "1106": "All selected fields have already been mapped"
+  "1106": "All selected fields have already been mapped",
+
+  "1201": "Sync job already exists for this source-target pair",
+  "1202": "Sync job not found",
+  "1203": "Sync job is already running",
+  "1204": "Sync run not found"
 }

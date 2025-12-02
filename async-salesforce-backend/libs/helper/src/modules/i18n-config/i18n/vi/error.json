@@ -30,5 +30,10 @@
   "1103": "Ánh xạ trường không tồn tại",
   "1104": "Ánh xạ trường đã tồn tại cho object mapping và field này",
   "1105": "Không tìm thấy catalog fields",
-  "1106": "Tất cả các field đã được chọn đều đã được map"
+  "1106": "Tất cả các field đã được chọn đều đã được map",
+
+  "1201": "Sync job đã tồn tại cho cặp source-target này",
+  "1202": "Sync job không tồn tại",
+  "1203": "Sync job đang chạy",
+  "1204": "Sync run không tồn tại"
 }

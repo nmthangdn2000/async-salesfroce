@@ -40,4 +40,10 @@ export enum ERROR_MESSAGES {
   FieldMappingAlreadyExists = 1104,
   NoCatalogFieldsFound = 1105,
   AllFieldsAlreadyMapped = 1106,
+
+  // 1201 - 1210: Sync
+  SyncJobAlreadyExists = 1201,
+  SyncJobNotFound = 1202,
+  SyncJobAlreadyRunning = 1203,
+  SyncRunNotFound = 1204,
 }

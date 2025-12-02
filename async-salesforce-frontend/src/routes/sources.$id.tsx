@@ -9,6 +9,7 @@ import { SettingsDrawer } from '@/components/source-detail/SettingsDrawer'
 import { OAuthDrawer } from '@/components/source-detail/OAuthDrawer'
 import { TargetSettingDrawer } from '@/components/source-detail/TargetSettingDrawer'
 import { MappingSection } from '@/components/source-detail/MappingSection'
+import { SyncSection } from '@/components/source-detail/SyncSection'
 import { useSourceDetail } from '@/hooks/useSourceDetail'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useOAuth } from '@/hooks/useOAuth'
@@ -288,6 +289,13 @@ function SourceDetailPage() {
 
       <div style={{ marginTop: 24 }}>
         <MappingSection
+          sourceId={id}
+          targetId={selectedTarget?.id}
+        />
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <SyncSection
           sourceId={id}
           targetId={selectedTarget?.id}
         />

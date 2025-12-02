@@ -3,85 +3,77 @@ import {
   TBaseModelResponseDto,
   TBaseResponsePaginationDto,
 } from '@app/shared/dtos/response.dto';
-import {
-  SYNC_JOB_STATUS,
-  SYNC_RUN_STATUS,
-  TSyncJob,
-  TSyncRun,
-} from '@app/shared/models/sync.model';
+import { SYNC_JOB_STATUS, SYNC_RUN_STATUS } from '@app/shared/models/sync.model';
 
-// SyncJob DTOs
+// Sync Job DTOs
 export type TFilterSyncJobRequestDto = TBaseFilterRequestDto & {
   sourceId?: string;
   targetId?: string;
   status?: SYNC_JOB_STATUS;
-  type?: string;
+  search?: string;
 };
 
-export type TGetSyncJobResponseDto = TBaseModelResponseDto &
-  Omit<
-    TSyncJob,
-    | 'id'
-    | 'createdAt'
-    | 'updatedAt'
-    | 'createdBy'
-    | 'updatedBy'
-    | 'deletedAt'
-    | 'deletedBy'
-    | 'source'
-    | 'target'
-    | 'syncRuns'
-  > & {
-    sourceId: string;
-    targetId: string;
-    syncRuns?: TGetSyncRunResponseDto[];
+export type TGetSyncJobResponseDto = TBaseModelResponseDto & {
+  sourceId: string;
+  targetId: string;
+  type: string;
+  scheduleCron?: string;
+  status: SYNC_JOB_STATUS;
+  lastRunAt?: Date;
+  source?: {
+    id: string;
+    name: string;
+    provider: string;
   };
+  target?: {
+    id: string;
+    name: string;
+    kind: string;
+  };
+  syncRuns?: TGetSyncRunResponseDto[];
+};
 
 export type TGetPaginatedSyncJobResponseDto =
   TBaseResponsePaginationDto<TGetSyncJobResponseDto>;
 
-export type ICreateSyncJobRequestDto = Pick<
-  TSyncJob,
-  'sourceId' | 'targetId' | 'type' | 'scheduleCron' | 'status'
->;
+export type ICreateSyncJobRequestDto = {
+  sourceId: string;
+  targetId: string;
+  type: string;
+  scheduleCron?: string;
+};
 
-export type IUpdateSyncJobRequestDto = Partial<ICreateSyncJobRequestDto>;
+export type IUpdateSyncJobRequestDto = Partial<
+  Omit<ICreateSyncJobRequestDto, 'sourceId' | 'targetId'>
+> & {
+  status?: SYNC_JOB_STATUS;
+};
 
-// SyncRun DTOs
+// Sync Run DTOs
 export type TFilterSyncRunRequestDto = TBaseFilterRequestDto & {
   jobId?: string;
   status?: SYNC_RUN_STATUS;
-  startedAtFrom?: Date;
-  startedAtTo?: Date;
+  search?: string;
 };
 
-export type TGetSyncRunResponseDto = TBaseModelResponseDto &
-  Omit<
-    TSyncRun,
-    | 'id'
-    | 'createdAt'
-    | 'updatedAt'
-    | 'createdBy'
-    | 'updatedBy'
-    | 'deletedAt'
-    | 'deletedBy'
-    | 'job'
-  > & {
-    jobId: string;
+export type TGetSyncRunResponseDto = TBaseModelResponseDto & {
+  jobId: string;
+  startedAt: Date;
+  finishedAt?: Date;
+  status?: SYNC_RUN_STATUS;
+  metrics?: Record<string, any>;
+  job?: {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    type: string;
   };
+};
 
 export type TGetPaginatedSyncRunResponseDto =
   TBaseResponsePaginationDto<TGetSyncRunResponseDto>;
 
-export type ICreateSyncRunRequestDto = Pick<
-  TSyncRun,
-  'jobId' | 'startedAt' | 'status'
-> & {
-  metrics?: Record<string, any>;
-};
-
-export type IUpdateSyncRunRequestDto = Partial<ICreateSyncRunRequestDto> & {
-  finishedAt?: Date;
-  status?: SYNC_RUN_STATUS;
-  metrics?: Record<string, any>;
+// Trigger Sync DTO
+export type ITriggerSyncRequestDto = {
+  jobId: string;
 };
