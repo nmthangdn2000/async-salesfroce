@@ -8,6 +8,7 @@ import { CatalogSection } from '@/components/source-detail/CatalogSection'
 import { SettingsDrawer } from '@/components/source-detail/SettingsDrawer'
 import { OAuthDrawer } from '@/components/source-detail/OAuthDrawer'
 import { TargetSettingDrawer } from '@/components/source-detail/TargetSettingDrawer'
+import { MappingSection } from '@/components/source-detail/MappingSection'
 import { useSourceDetail } from '@/hooks/useSourceDetail'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useOAuth } from '@/hooks/useOAuth'
@@ -53,7 +54,7 @@ function SourceDetailPage() {
     saveFieldChangesMutation,
   } = useCatalog(id, selectedObjectId, objectSearch, objectFilterSelected, fieldSearch, fieldFilterSelected)
 
-  const { fieldChanges, handleFieldChange, handleSelectAllFields, handleDeselectAllFields, handleCancelFieldChanges } = useFieldChanges(fieldsData?.items, selectedObjectId)
+  const { fieldChanges, setFieldChanges, handleFieldChange, handleSelectAllFields, handleDeselectAllFields, handleCancelFieldChanges } = useFieldChanges(fieldsData?.items, selectedObjectId)
 
   const { getCallbackUrl, handleAuthenticate } = useOAuth(id, sourceSetting || undefined)
 
@@ -203,9 +204,15 @@ function SourceDetailPage() {
   const handleObjectFilterChange = useCallback((filter: boolean | undefined) => setObjectFilterSelected(filter), [])
   const handleObjectsSync = useCallback(() => syncObjectsMutation.mutate(), [syncObjectsMutation])
 
-  const handleSaveFieldChanges = useCallback(() => {
-    saveFieldChangesMutation.mutate(fieldChanges)
-  }, [saveFieldChangesMutation, fieldChanges])
+  const handleSaveFieldChanges = useCallback(async () => {
+    try {
+      await saveFieldChangesMutation.mutateAsync(fieldChanges)
+      // Clear field changes after successful save
+      setFieldChanges({})
+    } catch (error) {
+      // Error is already handled in mutation onError
+    }
+  }, [saveFieldChangesMutation, fieldChanges, setFieldChanges])
   const handleFieldSearchChange = useCallback((search: string) => setFieldSearch(search), [])
   const handleFieldFilterChange = useCallback((filter: boolean | undefined) => setFieldFilterSelected(filter), [])
   const handleFieldsSync = useCallback(() => {
@@ -278,6 +285,13 @@ function SourceDetailPage() {
         onFieldFilterChange={handleFieldFilterChange}
         onFieldsSync={handleFieldsSync}
       />
+
+      <div style={{ marginTop: 24 }}>
+        <MappingSection
+          sourceId={id}
+          targetId={selectedTarget?.id}
+        />
+      </div>
 
       <SettingsDrawer
         open={isSettingDrawerOpen}

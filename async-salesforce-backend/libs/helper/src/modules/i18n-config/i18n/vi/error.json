@@ -3,6 +3,7 @@
 
   "1001": "Email đã tồn tại",
   "1002": "Email hoặc mật khẩu không chính xác",
+  "1003": "OAuth callback thất bại",
 
   "1011": "Người dùng không tồn tại",
 
@@ -12,26 +13,22 @@
 
   "1041": "Định dạng file không hợp lệ. Vui lòng chỉ upload file .png, .jpg, .jpeg, .mp4. Vui lòng thử lại!",
 
-  "1051": "Danh mục không tồn tại",
-  "1052": "Danh mục đã tồn tại",
+  "1051": "Dự án không tồn tại",
 
-  "1061": "Sản phẩm không tồn tại",
-  "1062": "Sản phẩm đã tồn tại",
-  "1063": "Mã SKU sản phẩm đã tồn tại",
-  "1064": "Slug sản phẩm đã tồn tại",
+  "1061": "Nguồn dữ liệu không tồn tại",
 
-  "1071": "Đơn hàng không tồn tại",
-  "1072": "Mục đơn hàng không tồn tại",
-  "1073": "Trạng thái đơn hàng không hợp lệ",
-  "1074": "Không thể cập nhật đơn hàng",
+  "1071": "Thành viên dự án không tồn tại",
+  "1072": "Thành viên dự án đã tồn tại",
 
-  "1081": "Mục giỏ hàng không tồn tại",
-  "1082": "Mục giỏ hàng đã tồn tại",
-  "1083": "Số lượng giỏ hàng không hợp lệ",
-  "1084": "Không thể cập nhật giỏ hàng",
+  "1081": "Cài đặt nguồn dữ liệu không tồn tại",
+  "1082": "Cài đặt nguồn dữ liệu đã tồn tại",
 
-  "1091": "Nhãn biến thể không tồn tại",
-  "1101": "Tùy chọn biến thể không tồn tại",
-  "1111": "Biến thể sản phẩm không tồn tại",
-  "1112": "Mã SKU biến thể sản phẩm đã tồn tại"
+  "1091": "Đích không tồn tại",
+
+  "1101": "Ánh xạ đối tượng không tồn tại",
+  "1102": "Ánh xạ đối tượng đã tồn tại cho source, object và target này",
+  "1103": "Ánh xạ trường không tồn tại",
+  "1104": "Ánh xạ trường đã tồn tại cho object mapping và field này",
+  "1105": "Không tìm thấy catalog fields",
+  "1106": "Tất cả các field đã được chọn đều đã được map"
 }

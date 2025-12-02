@@ -32,4 +32,12 @@ export enum ERROR_MESSAGES {
 
   // 1091 - 1100: Target
   TargetNotFound = 1091,
+
+  // 1101 - 1110: Mapping
+  ObjectMappingNotFound = 1101,
+  ObjectMappingAlreadyExists = 1102,
+  FieldMappingNotFound = 1103,
+  FieldMappingAlreadyExists = 1104,
+  NoCatalogFieldsFound = 1105,
+  AllFieldsAlreadyMapped = 1106,
 }

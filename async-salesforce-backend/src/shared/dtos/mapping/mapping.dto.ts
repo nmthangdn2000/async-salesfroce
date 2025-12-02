@@ -3,88 +3,69 @@ import {
   TBaseModelResponseDto,
   TBaseResponsePaginationDto,
 } from '@app/shared/dtos/response.dto';
-import {
-  PK_STRATEGY,
-  TFieldMapping,
-  TObjectMapping,
-} from '@app/shared/models/mapping.model';
+import { PK_STRATEGY } from '@app/shared/models/mapping.model';
 
-// ObjectMapping DTOs
+// Object Mapping DTOs
 export type TFilterObjectMappingRequestDto = TBaseFilterRequestDto & {
   sourceId?: string;
   targetId?: string;
   search?: string;
-  pkStrategy?: PK_STRATEGY;
 };
 
-export type TGetObjectMappingResponseDto = TBaseModelResponseDto &
-  Omit<
-    TObjectMapping,
-    | 'id'
-    | 'createdAt'
-    | 'updatedAt'
-    | 'createdBy'
-    | 'updatedBy'
-    | 'deletedAt'
-    | 'deletedBy'
-    | 'source'
-    | 'target'
-    | 'fieldMappings'
-  > & {
-    sourceId: string;
-    targetId: string;
-    fieldMappings: TGetFieldMappingResponseDto[];
-  };
+export type TGetObjectMappingResponseDto = TBaseModelResponseDto & {
+  sourceId: string;
+  objectApiName: string;
+  targetId: string;
+  targetTable: string;
+  pkStrategy: PK_STRATEGY;
+  fieldMappings?: TGetFieldMappingResponseDto[];
+};
 
 export type TGetPaginatedObjectMappingResponseDto =
   TBaseResponsePaginationDto<TGetObjectMappingResponseDto>;
 
-export type ICreateObjectMappingRequestDto = Pick<
-  TObjectMapping,
-  'sourceId' | 'objectApiName' | 'targetId' | 'targetTable' | 'pkStrategy'
+export type ICreateObjectMappingRequestDto = {
+  sourceId: string;
+  objectApiName: string;
+  targetId: string;
+  targetTable: string;
+  pkStrategy?: PK_STRATEGY;
+};
+
+export type IUpdateObjectMappingRequestDto = Partial<
+  Omit<ICreateObjectMappingRequestDto, 'sourceId' | 'targetId'>
 >;
 
-export type IUpdateObjectMappingRequestDto =
-  Partial<ICreateObjectMappingRequestDto>;
-
-// FieldMapping DTOs
+// Field Mapping DTOs
 export type TFilterFieldMappingRequestDto = TBaseFilterRequestDto & {
   objectMappingId?: string;
   search?: string;
-  logicalType?: string;
 };
 
-export type TGetFieldMappingResponseDto = TBaseModelResponseDto &
-  Omit<
-    TFieldMapping,
-    | 'id'
-    | 'createdAt'
-    | 'updatedAt'
-    | 'createdBy'
-    | 'updatedBy'
-    | 'deletedAt'
-    | 'deletedBy'
-    | 'objectMapping'
-  > & {
-    objectMappingId: string;
-  };
+export type TGetFieldMappingResponseDto = TBaseModelResponseDto & {
+  objectMappingId: string;
+  sfFieldApiName: string;
+  targetColumn: string;
+  logicalType: string;
+  targetTypeOverride?: string;
+};
 
 export type TGetPaginatedFieldMappingResponseDto =
   TBaseResponsePaginationDto<TGetFieldMappingResponseDto>;
 
-export type ICreateFieldMappingRequestDto = Pick<
-  TFieldMapping,
-  | 'objectMappingId'
-  | 'sfFieldApiName'
-  | 'targetColumn'
-  | 'logicalType'
-  | 'targetTypeOverride'
+export type ICreateFieldMappingRequestDto = {
+  objectMappingId: string;
+  sfFieldApiName: string;
+  targetColumn: string;
+  logicalType: string;
+  targetTypeOverride?: string;
+};
+
+export type IUpdateFieldMappingRequestDto = Partial<
+  Omit<ICreateFieldMappingRequestDto, 'objectMappingId'>
 >;
 
-export type IUpdateFieldMappingRequestDto =
-  Partial<ICreateFieldMappingRequestDto>;
-
-export type ICreateBulkFieldMappingRequestDto = {
+export type IBulkCreateFieldMappingRequestDto = {
   objectMappingId: string;
   fieldMappings: Omit<ICreateFieldMappingRequestDto, 'objectMappingId'>[];
 };

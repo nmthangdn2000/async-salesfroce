@@ -43,6 +43,13 @@ export const TargetSettingDrawer = memo<TargetSettingDrawerProps>(({
   useEffect(() => {
     if (open) {
       if (target) {
+        // Set active tab based on connectionType
+        if (target.connectionType === 'url') {
+          setActiveTab('url')
+        } else {
+          setActiveTab('host')
+        }
+        
         form.setFieldsValue({
           targetId: target.id,
           targetKind: target.kind,
@@ -57,6 +64,8 @@ export const TargetSettingDrawer = memo<TargetSettingDrawerProps>(({
           connectionString: target.connectionString || '',
         })
       } else {
+        // Reset to default tab when creating new target
+        setActiveTab('host')
         form.setFieldsValue({
           ssl: false,
         })

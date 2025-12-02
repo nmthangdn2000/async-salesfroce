@@ -34,11 +34,12 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(
-      typeof data.message === "string"
+    // Prefer errorMessage over message for better user-friendly messages
+    const errorMessage = data.errorMessage || 
+      (typeof data.message === "string"
         ? data.message
-        : data.message?.join(", ") || "An error occurred"
-    );
+        : data.message?.join(", ") || "An error occurred");
+    throw new Error(errorMessage);
   }
 
   // Backend wraps response in { statusCode, data, message }

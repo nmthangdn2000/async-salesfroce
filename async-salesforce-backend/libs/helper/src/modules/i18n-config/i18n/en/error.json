@@ -3,6 +3,7 @@
 
   "1001": "Email already exists",
   "1002": "Email or password incorrect",
+  "1003": "OAuth callback failed",
 
   "1011": "User not found",
 
@@ -12,26 +13,22 @@
 
   "1041": "File format is not supported. Only upload .png, .jpg, .jpeg, .mp4 file format. Please try again!",
 
-  "1051": "Category not found",
-  "1052": "Category already exists",
+  "1051": "Project not found",
 
-  "1061": "Product not found",
-  "1062": "Product already exists",
-  "1063": "Product SKU already exists",
-  "1064": "Product slug already exists",
+  "1061": "Source not found",
 
-  "1071": "Order not found",
-  "1072": "Order item not found",
-  "1073": "Order status is invalid",
-  "1074": "Order cannot be updated",
+  "1071": "Project member not found",
+  "1072": "Project member already exists",
 
-  "1081": "Cart item not found",
-  "1082": "Cart item already exists",
-  "1083": "Cart quantity is invalid",
-  "1084": "Cart cannot be updated",
+  "1081": "Source setting not found",
+  "1082": "Source setting already exists",
 
-  "1091": "Variant label not found",
-  "1101": "Variant option not found",
-  "1111": "Product variant not found",
-  "1112": "Product variant SKU already exists"
+  "1091": "Target not found",
+
+  "1101": "Object mapping not found",
+  "1102": "Object mapping already exists for this source, object, and target combination",
+  "1103": "Field mapping not found",
+  "1104": "Field mapping already exists for this object mapping and field",
+  "1105": "No catalog fields found",
+  "1106": "All selected fields have already been mapped"
 }
